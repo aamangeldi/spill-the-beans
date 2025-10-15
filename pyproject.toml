@@ -1,0 +1,16 @@
+[project]
+name = "spill-the-beans"
+version = "0.1.0"
+description = "RAG privacy attack reproduction"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.35.0",
+    "pyserini>=0.20.0",
+    "rouge-score>=0.1.2",
+    "sacrebleu>=2.3.1",
+    "bert-score>=0.3.13",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "accelerate>=0.24.0",
+]

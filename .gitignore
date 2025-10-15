@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Data
+data/
+*.txt
+*.jsonl
+
+# Results
+results/
+*.json
+*.csv
+
+# Models
+models/
+*.bin
+*.safetensors
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
