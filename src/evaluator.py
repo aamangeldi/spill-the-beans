@@ -51,9 +51,9 @@ def evaluate(predictions: List[str], references: List[str]) -> Dict[str, float]:
         rouge_scores.append(scores['rougeL'].fmeasure)
     rouge_l = np.mean(rouge_scores)
 
-    # BLEU
+    # BLEU - wrap each reference in a list to match predictions element-wise
     bleu = BLEU()
-    bleu_score = bleu.corpus_score(predictions, [references]).score / 100.0  # Normalize to [0, 1]
+    bleu_score = bleu.corpus_score(predictions, [[ref] for ref in references]).score / 100.0  # Normalize to [0, 1]
 
     # Token F1
     f1_scores = [compute_token_f1(pred, ref) for pred, ref in zip(predictions, references)]
