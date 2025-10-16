@@ -4,6 +4,8 @@ Reproduction of Table 1 from "Follow My Instruction and Spill the Beans: Scalabl
 
 ## Quick Start
 
+### Local Setup
+
 ```bash
 # 1. Setup environment
 uv venv
@@ -14,7 +16,16 @@ uv pip install -e .
 python src/main.py --models mistral-7b --num-samples 10
 ```
 
-**Dataset**: The Wikipedia dataset (`data/wiki_newest.txt`, 15,763 articles) is included in the repo, sourced from the [original rag-privacy repository](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt).
+### Google Colab
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aamangeldi/spill-the-beans/blob/main/colab_setup.ipynb)
+
+1. Open `colab_setup.ipynb` in Google Colab
+2. Enable GPU: Runtime > Change runtime type > GPU (T4)
+3. Run all cells
+
+### Dataset
+The Wikipedia dataset (`data/wiki_newest.txt`, 15,763 articles) is included in the repo, sourced from the [original rag-privacy repository](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt).
 
 ## What This Does
 
