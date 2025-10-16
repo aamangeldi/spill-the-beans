@@ -12,9 +12,15 @@ uv venv
 source .venv/bin/activate
 uv pip install -e .
 
-# 2. WikiQA dataset will auto-download on first run (from HuggingFace)
+# 2. Authenticate with HuggingFace (required for Llama2 models)
+huggingface-cli login
+# Get your token at: https://huggingface.co/settings/tokens
 
-# 3. Run a quick test (auto-detects best device: CUDA/MPS/CPU)
+# 3. Request access to gated models (one-time, usually instant approval):
+#    - Llama2-7B: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
+#    - Llama2-13B: https://huggingface.co/meta-llama/Llama-2-13b-chat-hf
+
+# 4. Run a quick test (auto-detects best device: CUDA/MPS/CPU)
 python src/main.py --models mistral-7b --num-samples 10
 ```
 
@@ -23,8 +29,12 @@ python src/main.py --models mistral-7b --num-samples 10
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aamangeldi/spill-the-beans/blob/main/colab_setup.ipynb)
 
 1. Open `colab_setup.ipynb` in Google Colab
-2. Enable GPU: Runtime > Change runtime type > GPU (T4)
-3. Run all cells
+2. Enable GPU: Runtime > Change runtime type > GPU (T4 for quick test, A100 for all models)
+3. **(Optional but recommended)** Set up HuggingFace token as Colab secret:
+   - Get token at https://huggingface.co/settings/tokens
+   - Click 🔑 in left sidebar → Add secret: name=`HF_TOKEN`, value=your token
+   - This avoids manual login each time
+4. Run all cells
 
 ### Dataset
 The Wikipedia dataset (`data/wiki_newest.txt`, 15,763 articles) is included in the repo, sourced from the [original rag-privacy repository](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt).
@@ -160,12 +170,34 @@ spill-the-beans/
 python src/main.py --models mistral-7b --num-samples 10 --device cpu
 ```
 
-### Model Not Found
-Some models require HuggingFace authentication:
+### Model Access Issues (401 Error)
+
+**Error**: "You are trying to access a gated repo" or "Access to model ... is restricted"
+
+**Solution**: Llama2 models require HuggingFace authentication and access approval.
+
+**Step 1 - Get HuggingFace Token:**
+1. Create account at https://huggingface.co/join
+2. Get token at https://huggingface.co/settings/tokens (create "Read" token)
+
+**Step 2 - Authenticate:**
 ```bash
 huggingface-cli login
-# Then request access: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
+# Paste your token when prompted
 ```
+
+**Step 3 - Request Model Access (one-time):**
+1. Visit model pages and click "Agree and access repository":
+   - Llama2-7B: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
+   - Llama2-13B: https://huggingface.co/meta-llama/Llama-2-13b-chat-hf
+2. Approval is usually instant, but can take a few minutes
+
+**Step 4 - Re-run experiment:**
+```bash
+python src/main.py --models llama2-7b --num-samples 10
+```
+
+**Note**: Other models (Mistral, SOLAR, Vicuna, Mixtral, WizardLM) don't require authentication.
 
 ### Slow Performance
 - Start with 7B models before 13B+
