@@ -16,9 +16,10 @@ uv pip install -e .
 huggingface-cli login
 # Get your token at: https://huggingface.co/settings/tokens
 
-# 3. Request access to gated models (one-time, usually instant approval):
-#    - Llama2-7B: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
-#    - Llama2-13B: https://huggingface.co/meta-llama/Llama-2-13b-chat-hf
+# 3. Request access to Llama2 (one-time, usually instant approval):
+#    - Visit https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
+#    - Fill out access request form (name, email, affiliation, intended use)
+#    - Submit - this grants access to all Llama2 models (7B, 13B, etc.)
 
 # 4. Run a quick test (auto-detects best device: CUDA/MPS/CPU)
 python src/main.py --models mistral-7b --num-samples 10
@@ -186,11 +187,13 @@ huggingface-cli login
 # Paste your token when prompted
 ```
 
-**Step 3 - Request Model Access (one-time):**
-1. Visit model pages and click "Agree and access repository":
-   - Llama2-7B: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
-   - Llama2-13B: https://huggingface.co/meta-llama/Llama-2-13b-chat-hf
-2. Approval is usually instant, but can take a few minutes
+**Step 3 - Request Llama2 Access (one-time):**
+1. Visit https://huggingface.co/meta-llama/Llama-2-7b-chat-hf
+2. Fill out the access request form:
+   - Name, email, affiliation, intended use (e.g., "Research reproduction")
+3. Click "Submit"
+4. This grants access to **all** Llama2 models (7B, 13B, etc.)
+5. Approval is usually instant, but can take a few minutes
 
 **Step 4 - Re-run experiment:**
 ```bash
