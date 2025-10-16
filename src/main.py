@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime
 import random
+import gc
+import torch
 
 from data_loader import load_wiki_dataset
 from retrieval import BM25Retriever
@@ -132,6 +134,14 @@ def run_experiment(
         json.dump(results_data, f, indent=2)
 
     print(f"\nResults saved to {results_file}")
+
+    # Clean up model from memory before loading next model
+    print(f"Cleaning up {model_name} from memory...")
+    del model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    print("Memory cleanup complete\n")
 
     return metrics
 
