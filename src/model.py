@@ -1,6 +1,6 @@
 """Model inference for language models."""
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from typing import List
 
 
@@ -49,7 +49,14 @@ class LLMInference:
             device = 'cpu'
 
         self.device = device
-        print(f"Loading {model_name} from {self.model_path} on {device}...")
+
+        # Check if we need quantization for Mixtral-8x7b
+        use_quantization = model_name == 'mixtral-8x7b' and device == 'cuda'
+
+        if use_quantization:
+            print(f"Loading {model_name} from {self.model_path} on {device} with 4-bit quantization...")
+        else:
+            print(f"Loading {model_name} from {self.model_path} on {device}...")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
@@ -60,17 +67,34 @@ class LLMInference:
         # Use float16 for cuda, float32 for mps/cpu (mps doesn't fully support float16)
         use_fp16 = device == 'cuda'
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            dtype=torch.float16 if use_fp16 else torch.float32,
-            device_map='auto' if device == 'cuda' else None,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True
-        )
+        # Configure quantization for Mixtral-8x7b to fit in 40GB VRAM
+        if use_quantization:
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4"
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_path,
+                quantization_config=quantization_config,
+                device_map='auto',
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
+            )
+            print(f"✓ Loaded with 4-bit quantization (~20-25GB VRAM)")
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_path,
+                dtype=torch.float16 if use_fp16 else torch.float32,
+                device_map='auto' if device == 'cuda' else None,
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
+            )
 
-        # Move to device if not using device_map
-        if device != 'cuda':
-            self.model = self.model.to(device)
+            # Move to device if not using device_map
+            if device != 'cuda':
+                self.model = self.model.to(device)
 
         self.model.eval()
         print(f"Model loaded successfully on {device}")

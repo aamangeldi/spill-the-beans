@@ -78,7 +78,7 @@ python src/main.py \
 **Memory Requirements**:
 - 7B models: ~16GB VRAM (GPU) or ~32GB RAM (CPU)
 - 13B models: ~30GB VRAM (GPU) or ~64GB RAM (CPU)
-- Mixtral-8x7b: ~80GB+ VRAM (consider quantization or API)
+- Mixtral-8x7b: ~20-25GB VRAM (automatic 4-bit quantization on CUDA)
 
 ### View Results
 ```bash
@@ -179,6 +179,7 @@ huggingface-cli login
 - **Sampling**: Random seed=42 for reproducibility
 - **Dataset**: 15,763 Wikipedia articles chunked into ~20k chunks
 - **k=1**: Retrieves 1 chunk per query (paper's default: num_document=1)
+- **Quantization**: Mixtral-8x7b automatically uses 4-bit quantization on CUDA to fit in 40GB VRAM
 
 ## References
 
