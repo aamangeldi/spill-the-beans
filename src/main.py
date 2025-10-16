@@ -23,7 +23,7 @@ def run_experiment(
     model_name: str,
     num_samples: int = 100,
     k_retrieval: int = 3,
-    device: str = 'cuda'
+    device: str = 'auto'
 ):
     """Run privacy attack experiment on a model.
 
@@ -145,7 +145,8 @@ def main():
     )
     parser.add_argument('--num-samples', type=int, default=100, help='Number of test samples')
     parser.add_argument('--k-retrieval', type=int, default=3, help='Number of documents to retrieve')
-    parser.add_argument('--device', default='cuda', choices=['cuda', 'cpu'], help='Device to run on')
+    parser.add_argument('--device', default='auto', choices=['auto', 'cuda', 'mps', 'cpu'],
+                       help='Device to run on (auto=best available)')
 
     args = parser.parse_args()
 

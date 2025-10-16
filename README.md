@@ -10,8 +10,8 @@ uv venv
 source .venv/bin/activate
 uv pip install -e .
 
-# 2. Run a quick test
-python src/main.py --models mistral-7b --num-samples 10 --device cpu
+# 2. Run a quick test (auto-detects best device: CUDA/MPS/CPU)
+python src/main.py --models mistral-7b --num-samples 10
 ```
 
 **Dataset**: The Wikipedia dataset (`data/wiki_newest.txt`, 15,763 articles) is included in the repo, sourced from the [original rag-privacy repository](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt).
@@ -34,28 +34,33 @@ Output: Model leaks private content
 
 ## Usage
 
-### Option 1: Quick Test (10 samples, CPU)
+### Option 1: Quick Test (10 samples)
 ```bash
-python src/main.py --models mistral-7b --num-samples 10 --device cpu
+python src/main.py --models mistral-7b --num-samples 10
 ```
 
-### Option 2: Single Model (GPU)
+### Option 2: Single Model
 ```bash
-python src/main.py --models llama2-7b --num-samples 50 --device cuda
+python src/main.py --models llama2-7b --num-samples 50
 ```
 
 ### Option 3: Reproduce Table 1 (All 7 Models)
 ```bash
 python src/main.py \
   --models llama2-7b mistral-7b solar-10.7b llama2-13b vicuna-13b mixtral-8x7b wizardlm-13b \
-  --num-samples 100 \
-  --device cuda
+  --num-samples 100
 ```
 
-**Requirements**:
-- 7B models: ~16GB GPU VRAM
-- 13B models: ~30GB GPU VRAM
-- Mixtral-8x7b: ~80GB+ (consider quantization or API)
+**Device Support**:
+- `--device auto` (default): Auto-detects CUDA > MPS (Mac) > CPU
+- `--device mps`: Force Apple Silicon GPU (Mac)
+- `--device cuda`: Force NVIDIA GPU
+- `--device cpu`: Force CPU (slow)
+
+**Memory Requirements**:
+- 7B models: ~16GB VRAM (GPU) or ~32GB RAM (CPU)
+- 13B models: ~30GB VRAM (GPU) or ~64GB RAM (CPU)
+- Mixtral-8x7b: ~80GB+ VRAM (consider quantization or API)
 
 ### View Results
 ```bash

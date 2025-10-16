@@ -19,21 +19,37 @@ MODELS = {
 class LLMInference:
     """Simple LLM inference wrapper."""
 
-    def __init__(self, model_name: str, device: str = 'cuda'):
+    def __init__(self, model_name: str, device: str = 'auto'):
         """Initialize model.
 
         Args:
             model_name: Short model name (e.g., 'llama2-7b')
-            device: Device to run on ('cuda' or 'cpu')
+            device: Device to run on ('auto', 'cuda', 'mps', or 'cpu')
+                    'auto' will choose best available: cuda > mps > cpu
         """
         if model_name not in MODELS:
             raise ValueError(f"Unknown model: {model_name}. Choose from {list(MODELS.keys())}")
 
         self.model_name = model_name
         self.model_path = MODELS[model_name]
-        self.device = device
 
-        print(f"Loading {model_name} from {self.model_path}...")
+        # Auto-detect best device
+        if device == 'auto':
+            if torch.cuda.is_available():
+                device = 'cuda'
+            elif torch.backends.mps.is_available():
+                device = 'mps'
+            else:
+                device = 'cpu'
+        elif device == 'cuda' and not torch.cuda.is_available():
+            print("CUDA requested but not available. Falling back to CPU.")
+            device = 'cpu'
+        elif device == 'mps' and not torch.backends.mps.is_available():
+            print("MPS requested but not available. Falling back to CPU.")
+            device = 'cpu'
+
+        self.device = device
+        print(f"Loading {model_name} from {self.model_path} on {device}...")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
@@ -41,18 +57,23 @@ class LLMInference:
         )
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # Use float16 for cuda, float32 for mps/cpu (mps doesn't fully support float16)
+        use_fp16 = device == 'cuda'
+
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            torch_dtype=torch.float16 if device == 'cuda' else torch.float32,
+            dtype=torch.float16 if use_fp16 else torch.float32,
             device_map='auto' if device == 'cuda' else None,
-            trust_remote_code=True
+            trust_remote_code=True,
+            low_cpu_mem_usage=True
         )
 
-        if device == 'cpu':
+        # Move to device if not using device_map
+        if device != 'cuda':
             self.model = self.model.to(device)
 
         self.model.eval()
-        print(f"Model loaded successfully")
+        print(f"Model loaded successfully on {device}")
 
     def generate(self, prompt: str, max_new_tokens: int = 512) -> str:
         """Generate text from prompt.
