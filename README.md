@@ -10,12 +10,11 @@ uv venv
 source .venv/bin/activate
 uv pip install -e .
 
-# 2. Download dataset (already done - 15,763 Wikipedia articles)
-# Data is in data/wiki_newest.txt
-
-# 3. Run a quick test
+# 2. Run a quick test
 python src/main.py --models mistral-7b --num-samples 10 --device cpu
 ```
+
+**Dataset**: The Wikipedia dataset (`data/wiki_newest.txt`, 15,763 articles) is included in the repo, sourced from the [original rag-privacy repository](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt).
 
 ## What This Does
 
@@ -144,9 +143,9 @@ huggingface-cli login
 
 ## References
 
-- Paper: https://arxiv.org/abs/2402.17840
-- Original Code: https://github.com/zhentingqi/rag-privacy
-- Dataset: Wikipedia articles from rag-privacy repo
+- **Paper**: [Follow My Instruction and Spill the Beans](https://arxiv.org/abs/2402.17840)
+- **Original Code**: https://github.com/zhentingqi/rag-privacy
+- **Dataset**: Wikipedia articles from [rag-privacy/raw_data/private/wiki_newest](https://github.com/zhentingqi/rag-privacy/blob/main/raw_data/private/wiki_newest/wiki_newest.txt)
 
 ## Why This Matters
 

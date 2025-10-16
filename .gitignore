@@ -11,10 +11,11 @@ venv/
 dist/
 build/
 
-# Data
-data/
-*.txt
-*.jsonl
+# Data (except wiki_newest.txt which we check in)
+data/*.pkl
+data/*.jsonl
+data/*.json
+data/bm25_index/
 
 # Results
 results/
