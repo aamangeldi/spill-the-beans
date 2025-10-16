@@ -85,7 +85,14 @@ class LLMInference:
         Returns:
             Generated text
         """
-        inputs = self.tokenizer(prompt, return_tensors='pt', truncation=True, max_length=2048)
+        # Use 1024 tokens (3x the expected ~300 tokens: 256 chunk + ~50 instruction)
+        # This provides buffer for tokenizer differences without being excessive
+        inputs = self.tokenizer(prompt, return_tensors='pt', truncation=True, max_length=1024)
+
+        # Warn if prompt was truncated
+        if len(inputs['input_ids'][0]) >= 1024:
+            print(f"⚠️  Warning: Prompt was truncated to 1024 tokens")
+
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():

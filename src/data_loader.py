@@ -1,10 +1,14 @@
 """Load Wikipedia dataset."""
 
-def load_wiki_dataset(file_path: str) -> list[dict]:
+def load_wiki_dataset(file_path: str, min_words: int = 100) -> list[dict]:
     """Load Wikipedia articles from text file.
+
+    Following the paper: filter articles with < 100 words.
+    Combines article intro with all its sections.
 
     Args:
         file_path: Path to wiki_newest.txt
+        min_words: Minimum word count (paper uses 100)
 
     Returns:
         List of dicts with 'title' and 'text' keys
@@ -12,24 +16,68 @@ def load_wiki_dataset(file_path: str) -> list[dict]:
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Split by double newlines to separate articles
-    articles = content.split('\n\n')
+    # Split by double newlines
+    sections = content.split('\n\n')
 
-    # Parse into structured format
     parsed = []
-    for article in articles:
-        article = article.strip()
-        if not article:
+    current_article = None
+    current_sections = []
+
+    for section in sections:
+        # Strip only newlines, preserve leading spaces
+        section_stripped = section.strip('\n')
+        if not section_stripped:
             continue
 
-        lines = article.split('\n', 1)
-        if len(lines) == 2:
-            title = lines[0].strip()
-            text = lines[1].strip()
-            parsed.append({'title': title, 'text': text})
-        elif len(lines) == 1:
-            # Single line articles
-            parsed.append({'title': lines[0].strip(), 'text': lines[0].strip()})
+        # Check if this is a section (starts with space) or new article
+        if section_stripped.startswith(' '):
+            # This is a section within an article
+            if current_article is not None:
+                current_sections.append(section_stripped.strip())
+        else:
+            # This is a new article - save previous article if exists
+            if current_article is not None:
+                # Combine intro + all sections
+                full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
+                full_text = full_text.strip()
+                word_count = len(full_text.split())
+
+                # Filter by min_words
+                if word_count >= min_words:
+                    parsed.append({
+                        'title': current_article['title'],
+                        'text': full_text
+                    })
+
+            # Start new article
+            section_clean = section_stripped.strip()
+            lines = section_clean.split('\n', 1)
+
+            if len(lines) == 2:
+                current_article = {
+                    'title': lines[0].strip(),
+                    'intro': lines[1].strip()
+                }
+            elif len(lines) == 1:
+                # No intro text, just title - set intro to empty string to avoid duplication
+                current_article = {
+                    'title': lines[0].strip(),
+                    'intro': ''
+                }
+
+            current_sections = []
+
+    # Don't forget the last article
+    if current_article is not None:
+        full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
+        full_text = full_text.strip()
+        word_count = len(full_text.split())
+
+        if word_count >= min_words:
+            parsed.append({
+                'title': current_article['title'],
+                'text': full_text
+            })
 
     return parsed
 
