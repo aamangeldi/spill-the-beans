@@ -119,16 +119,29 @@ class LLMInference:
 
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
+        # Configure generation parameters based on model type
+        # Some models (like vicuna-13b) don't support certain generation parameters
+        generation_kwargs = {
+            **inputs,
+            'max_new_tokens': max_new_tokens,
+            'pad_token_id': self.tokenizer.eos_token_id
+        }
+        
+        # Add sampling parameters only for models that support them
+        # Vicuna models often have issues with temperature/top_p parameters
+        if self.model_name not in ['vicuna-13b']:
+            generation_kwargs.update({
+                'temperature': 0.2,
+                'top_k': 60,
+                'top_p': 0.9,
+                'do_sample': True
+            })
+        else:
+            # For vicuna-13b, use greedy decoding (no sampling)
+            generation_kwargs['do_sample'] = False
+
         with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=0.2,
-                top_k=60,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
-            )
+            outputs = self.model.generate(**generation_kwargs)
 
         # Decode only the generated part (skip input)
         generated = self.tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
