@@ -1,79 +1,157 @@
-"""Simple BM25-style document retrieval using sklearn."""
+"""BM25 document retrieval with chunking strategy from the paper."""
 import pickle
-from typing import List, Dict
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Dict, Tuple
+from rank_bm25 import BM25Okapi
 import numpy as np
 
 
-class BM25Retriever:
-    """Simple TF-IDF retriever (approximates BM25)."""
+def chunk_document(text: str, max_length: int = 256, stride: int = 128) -> List[str]:
+    """Chunk document into overlapping segments.
 
-    def __init__(self):
-        """Initialize retriever."""
-        self.vectorizer = TfidfVectorizer(
-            max_features=10000,
-            ngram_range=(1, 2),
-            stop_words='english'
-        )
-        self.doc_vectors = None
-        self.documents = None
+    Following paper's approach:
+    - max_retrieval_seq_length: 256 tokens
+    - stride: 128 tokens (50% overlap)
+
+    Args:
+        text: Document text to chunk
+        max_length: Maximum tokens per chunk
+        stride: Number of tokens to stride between chunks
+
+    Returns:
+        List of text chunks
+    """
+    # Simple whitespace tokenization (approximates real tokens)
+    tokens = text.split()
+
+    # Handle empty documents
+    if len(tokens) == 0:
+        return []
+
+    if len(tokens) <= max_length:
+        return [text]
+
+    chunks = []
+    start = 0
+
+    while start < len(tokens):
+        end = min(start + max_length, len(tokens))
+        chunk_tokens = tokens[start:end]
+        chunks.append(' '.join(chunk_tokens))
+
+        # If we've reached the end, break
+        if end == len(tokens):
+            break
+
+        # Move forward by stride
+        start += stride
+
+    return chunks
+
+
+class BM25Retriever:
+    """BM25 retriever with document chunking."""
+
+    def __init__(self, max_chunk_length: int = 256, stride: int = 128):
+        """Initialize retriever.
+
+        Args:
+            max_chunk_length: Maximum tokens per chunk (paper uses 256)
+            stride: Stride for overlapping chunks (paper uses 128)
+        """
+        self.max_chunk_length = max_chunk_length
+        self.stride = stride
+        self.bm25 = None
+        self.chunks = None  # List of (chunk_text, source_doc_title, chunk_idx)
 
     def build_index(self, documents: List[Dict[str, str]]):
-        """Build retrieval index from documents.
+        """Build BM25 index from documents with chunking.
 
         Args:
             documents: List of dicts with 'title' and 'text' keys
         """
-        self.documents = documents
+        print(f"Chunking {len(documents)} documents (max_length={self.max_chunk_length}, stride={self.stride})...")
 
-        # Combine title and text for indexing
-        corpus = [f"{doc['title']} {doc['text']}" for doc in documents]
+        all_chunks = []
+        chunk_metadata = []
 
-        print(f"Building index from {len(corpus)} documents...")
-        self.doc_vectors = self.vectorizer.fit_transform(corpus)
-        print(f"Index built with vocabulary size: {len(self.vectorizer.vocabulary_)}")
+        for doc in documents:
+            # Combine title and text
+            full_text = f"{doc['title']}\n{doc['text']}"
 
-    def retrieve(self, query: str, k: int = 3) -> List[str]:
-        """Retrieve top-k documents for a query.
+            # Chunk the document
+            doc_chunks = chunk_document(full_text, self.max_chunk_length, self.stride)
+
+            # Store chunks with metadata
+            for i, chunk in enumerate(doc_chunks):
+                all_chunks.append(chunk)
+                chunk_metadata.append({
+                    'title': doc['title'],
+                    'chunk_idx': i,
+                    'total_chunks': len(doc_chunks),
+                    'text': chunk
+                })
+
+        self.chunks = chunk_metadata
+
+        print(f"Created {len(all_chunks)} chunks from {len(documents)} documents")
+        print(f"Average chunks per document: {len(all_chunks)/len(documents):.1f}")
+
+        # Tokenize chunks for BM25 (simple whitespace tokenization)
+        tokenized_chunks = [chunk.lower().split() for chunk in all_chunks]
+
+        # Build BM25 index
+        print("Building BM25 index...")
+        self.bm25 = BM25Okapi(tokenized_chunks)
+        print("Index built successfully")
+
+    def retrieve(self, query: str, k: int = 1) -> List[str]:
+        """Retrieve top-k chunks for a query.
 
         Args:
             query: Search query
-            k: Number of documents to retrieve
+            k: Number of chunks to retrieve (paper uses num_document=1)
 
         Returns:
-            List of retrieved document texts (title + text)
+            List of retrieved chunk texts
         """
-        if self.doc_vectors is None:
+        if self.bm25 is None:
             raise ValueError("Index not built. Call build_index() first.")
 
-        # Vectorize query
-        query_vector = self.vectorizer.transform([query])
+        # Tokenize query
+        tokenized_query = query.lower().split()
 
-        # Compute similarities
-        similarities = cosine_similarity(query_vector, self.doc_vectors).flatten()
+        # Get BM25 scores
+        scores = self.bm25.get_scores(tokenized_query)
 
         # Get top-k indices
-        top_k_indices = np.argsort(similarities)[::-1][:k]
+        top_k_indices = np.argsort(scores)[::-1][:k]
 
-        # Return full documents
+        # Return chunks
         retrieved = []
         for idx in top_k_indices:
-            doc = self.documents[idx]
-            full_text = f"{doc['title']}\n{doc['text']}"
-            retrieved.append(full_text)
+            chunk_info = self.chunks[idx]
+            retrieved.append(chunk_info['text'])
 
         return retrieved
 
     def save(self, path: str):
         """Save index to disk."""
         with open(path, 'wb') as f:
-            pickle.dump((self.vectorizer, self.doc_vectors, self.documents), f)
+            pickle.dump({
+                'bm25': self.bm25,
+                'chunks': self.chunks,
+                'max_chunk_length': self.max_chunk_length,
+                'stride': self.stride
+            }, f)
 
     def load(self, path: str):
         """Load index from disk."""
         with open(path, 'rb') as f:
-            self.vectorizer, self.doc_vectors, self.documents = pickle.load(f)
+            data = pickle.load(f)
+            self.bm25 = data['bm25']
+            self.chunks = data['chunks']
+            self.max_chunk_length = data['max_chunk_length']
+            self.stride = data['stride']
 
 
 if __name__ == '__main__':
@@ -86,22 +164,25 @@ if __name__ == '__main__':
     print(f"Loaded {len(articles)} articles")
 
     # Build or load index
-    retriever = BM25Retriever()
-    index_path = 'data/retrieval_index.pkl'
+    retriever = BM25Retriever(max_chunk_length=256, stride=128)
+    index_path = 'data/retrieval_index_chunked.pkl'
 
     if os.path.exists(index_path):
-        print("Loading existing index...")
+        print("\nLoading existing index...")
         retriever.load(index_path)
     else:
+        print("\nBuilding new index...")
         retriever.build_index(articles)
         print("Saving index...")
         retriever.save(index_path)
 
     # Test retrieval
-    query = "British actor awards Emmy BAFTA"
-    print(f"\nQuery: {query}")
-    docs = retriever.retrieve(query, k=3)
-    print(f"\nRetrieved {len(docs)} documents:")
-    for i, doc in enumerate(docs):
-        print(f"\n--- Document {i+1} ---")
-        print(doc[:300] + "...")
+    print("\n" + "="*60)
+    query = "How are epithelial tissues joined together?"
+    print(f"Query: {query}")
+    chunks = retriever.retrieve(query, k=1)
+
+    print(f"\nRetrieved {len(chunks)} chunk(s):")
+    for i, chunk in enumerate(chunks):
+        print(f"\n--- Chunk {i+1} ({len(chunk.split())} tokens) ---")
+        print(chunk[:500] + ("..." if len(chunk) > 500 else ""))

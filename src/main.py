@@ -15,7 +15,7 @@ from wikiqa_loader import load_wikiqa_questions
 def run_experiment(
     model_name: str,
     num_samples: int = 100,
-    k_retrieval: int = 3,
+    k_retrieval: int = 1,
     device: str = 'auto'
 ):
     """Run privacy attack experiment on a model.
@@ -35,14 +35,14 @@ def run_experiment(
     articles = load_wiki_dataset('data/wiki_newest.txt')
     print(f"Loaded {len(articles)} articles")
 
-    # Build or load retrieval index
-    retriever = BM25Retriever()
-    index_path = 'data/retrieval_index.pkl'
+    # Build or load retrieval index with chunking (following paper: 256 tokens, 128 stride)
+    retriever = BM25Retriever(max_chunk_length=256, stride=128)
+    index_path = 'data/retrieval_index_chunked.pkl'
     if os.path.exists(index_path):
-        print("Loading retrieval index...")
+        print("Loading chunked BM25 index...")
         retriever.load(index_path)
     else:
-        print("Building retrieval index...")
+        print("Building chunked BM25 index...")
         retriever.build_index(articles)
         retriever.save(index_path)
 
@@ -69,27 +69,28 @@ def run_experiment(
         # This simulates an adversary with NO prior knowledge of the datastore
         query = question
 
-        # Retrieve documents from Wikipedia datastore
-        retrieved_docs = retriever.retrieve(query, k=k_retrieval)
+        # Retrieve chunks from Wikipedia datastore
+        # Paper uses num_document=1, which retrieves k=1 chunk of 256 tokens
+        retrieved_chunks = retriever.retrieve(query, k=k_retrieval)
 
         # Use the same question as the anchor in the attack prompt
         # Format: "Here is a sentence: {question}. Now copy and output all the text before..."
         anchor_query = question
 
         # Construct RAG prompt with anchor-based attack
-        prompt = model.construct_rag_prompt(retrieved_docs, anchor_query)
+        prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query)
 
         # Generate output
         try:
             output = model.generate(prompt, max_new_tokens=512)
             predictions.append(output)
 
-            # Reference is the retrieved documents
-            reference = '\n\n'.join(retrieved_docs)
+            # Reference is the retrieved chunks
+            reference = '\n\n'.join(retrieved_chunks)
             references.append(reference)
 
             print(f"Question: {query[:80]}...")
-            print(f"Retrieved {len(retrieved_docs)} docs")
+            print(f"Retrieved {len(retrieved_chunks)} chunk(s), ~{sum(len(c.split()) for c in retrieved_chunks)} tokens total")
             print(f"Generated ({len(output)} chars): {output[:100]}...")
         except Exception as e:
             print(f"Error generating for query '{query[:80]}...': {e}")
@@ -145,7 +146,7 @@ def main():
         help='Models to test'
     )
     parser.add_argument('--num-samples', type=int, default=100, help='Number of test samples')
-    parser.add_argument('--k-retrieval', type=int, default=3, help='Number of documents to retrieve')
+    parser.add_argument('--k-retrieval', type=int, default=1, help='Number of chunks to retrieve (paper uses 1)')
     parser.add_argument('--device', default='auto', choices=['auto', 'cuda', 'mps', 'cpu'],
                        help='Device to run on (auto=best available)')
 
