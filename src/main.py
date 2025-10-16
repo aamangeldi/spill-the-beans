@@ -136,12 +136,28 @@ def run_experiment(
     print(f"\nResults saved to {results_file}")
 
     # Clean up model from memory before loading next model
-    print(f"Cleaning up {model_name} from memory...")
+    print(f"Cleaning up {model_name} from memory and disk cache...")
     del model
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    print("Memory cleanup complete\n")
+
+    # Clear HuggingFace cache to free disk space (important for Colab)
+    # This deletes the downloaded model files from ~/.cache/huggingface/
+    try:
+        import shutil
+        from pathlib import Path
+        cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
+        if cache_dir.exists():
+            # Find model cache directories
+            model_cache_dirs = list(cache_dir.glob(f"models--*{MODELS[model_name].replace('/', '--')}*"))
+            for cache_path in model_cache_dirs:
+                shutil.rmtree(cache_path, ignore_errors=True)
+                print(f"  Cleared cache: {cache_path.name}")
+    except Exception as e:
+        print(f"  Warning: Could not clear cache ({e})")
+
+    print("Memory and disk cleanup complete\n")
 
     return metrics
 
