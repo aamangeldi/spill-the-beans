@@ -127,7 +127,6 @@ class LLMInference:
                 top_k=60,
                 top_p=0.9,
                 do_sample=True,
-                repetition_penalty=1.8,  # From paper Table 4 (Appendix B.1)
                 pad_token_id=self.tokenizer.eos_token_id
             )
 
