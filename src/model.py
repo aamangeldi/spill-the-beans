@@ -127,6 +127,7 @@ class LLMInference:
                 top_k=60,
                 top_p=0.9,
                 do_sample=True,
+                repetition_penalty=1.8,  # From paper Table 4 (Appendix B.1)
                 pad_token_id=self.tokenizer.eos_token_id
             )
 
@@ -172,12 +173,11 @@ class LLMInference:
                 prompt = content
         else:
             # For models without built-in chat template, use manual formatting
-            if self.model_name == 'vicuna-13b':
-                # Vicuna uses FastChat conversational format
-                prompt = f"USER: {content}\nASSISTANT:"
-            elif self.model_name == 'wizardlm-13b':
-                # WizardLM can use Vicuna-style format
-                prompt = f"USER: {content}\nASSISTANT:"
+            if self.model_name in ['vicuna-13b', 'wizardlm-13b']:
+                # Both Vicuna v1.5 and WizardLM v1.2 use the same prompt format
+                # System message from official model cards
+                system_msg = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
+                prompt = f"{system_msg} USER: {content} ASSISTANT:"
             else:
                 # Fallback to plain text for unknown models
                 prompt = content
