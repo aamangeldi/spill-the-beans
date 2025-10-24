@@ -155,8 +155,9 @@ class LLMInference:
         # Use chat template for instruction-tuned models
         # This automatically adds proper formatting:
         # - Mistral/Mixtral: <s> [INST] {content} [/INST]
-        # - Llama2/SOLAR/WizardLM: [INST] <<SYS>>...<</SYS>> {content} [/INST]
+        # - Llama2/SOLAR: [INST] <<SYS>>...<</SYS>> {content} [/INST]
         # - Vicuna: USER: {content}\nASSISTANT:
+        # - WizardLM: USER: {content}\nASSISTANT: (or Alpaca format)
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
             messages = [{"role": "user", "content": content}]
             try:
@@ -170,8 +171,16 @@ class LLMInference:
                 print(f"⚠️  Warning: Chat template failed ({e}), using plain text")
                 prompt = content
         else:
-            # For models without chat template, use plain text
-            prompt = content
+            # For models without built-in chat template, use manual formatting
+            if self.model_name == 'vicuna-13b':
+                # Vicuna uses FastChat conversational format
+                prompt = f"USER: {content}\nASSISTANT:"
+            elif self.model_name == 'wizardlm-13b':
+                # WizardLM can use Vicuna-style format
+                prompt = f"USER: {content}\nASSISTANT:"
+            else:
+                # Fallback to plain text for unknown models
+                prompt = content
 
         return prompt
 
