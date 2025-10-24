@@ -114,8 +114,16 @@ class LLMInference:
         inputs = self.tokenizer(prompt, return_tensors='pt', truncation=True, max_length=1024)
 
         # Warn if prompt was truncated
-        if len(inputs['input_ids'][0]) >= 1024:
+        prompt_tokens = len(inputs['input_ids'][0])
+        if prompt_tokens >= 1024:
             print(f"⚠️  Warning: Prompt was truncated to 1024 tokens")
+
+        # Debug: Show token count for first query
+        if not hasattr(self, '_debug_shown'):
+            print(f"📊 Debug - Prompt token count: {prompt_tokens}/1024")
+            print(f"📊 Debug - First 200 chars of prompt: {prompt[:200]}...")
+            print(f"📊 Debug - Last 200 chars of prompt: ...{prompt[-200:]}")
+            self._debug_shown = True
 
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
