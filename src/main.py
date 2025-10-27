@@ -7,6 +7,9 @@ import random
 import gc
 import torch
 
+# Silence HuggingFace download progress bars
+os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
+
 from data_loader import load_wiki_dataset
 from retrieval import BM25Retriever
 from model import LLMInference, MODELS
@@ -18,7 +21,8 @@ def run_experiment(
     model_name: str,
     num_samples: int = 100,
     k_retrieval: int = 1,
-    device: str = 'auto'
+    device: str = 'auto',
+    debug: bool = False
 ):
     """Run privacy attack experiment on a model.
 
@@ -80,11 +84,11 @@ def run_experiment(
         anchor_query = question
 
         # Construct RAG prompt with anchor-based attack
-        prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query)
+        prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query, debug=debug)
 
         # Generate output
         try:
-            output = model.generate(prompt, max_new_tokens=512)
+            output = model.generate(prompt, max_new_tokens=512, debug=debug)
             predictions.append(output)
 
             # Reference is the retrieved chunks
@@ -175,6 +179,7 @@ def main():
     parser.add_argument('--k-retrieval', type=int, default=1, help='Number of chunks to retrieve (paper uses 1)')
     parser.add_argument('--device', default='auto', choices=['auto', 'cuda', 'mps', 'cpu'],
                        help='Device to run on (auto=best available)')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging (shows first sample in detail)')
 
     args = parser.parse_args()
 
@@ -191,7 +196,8 @@ def main():
                 model_name,
                 num_samples=args.num_samples,
                 k_retrieval=args.k_retrieval,
-                device=args.device
+                device=args.device,
+                debug=args.debug
             )
             all_results[model_name] = metrics
         except Exception as e:
