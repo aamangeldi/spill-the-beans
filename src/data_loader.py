@@ -3,7 +3,7 @@ import re
 
 
 def strip_latex(text: str) -> str:
-    """Remove LaTeX markup from Wikipedia text.
+    r"""Remove LaTeX markup from Wikipedia text.
 
     Wikipedia articles often contain LaTeX math notation like:
     {\displaystyle W} or {\displaystyle \Delta U=Q-W}
