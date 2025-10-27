@@ -84,7 +84,7 @@ def run_experiment(
         anchor_query = question
 
         # Construct RAG prompt with anchor-based attack
-        prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query, debug=debug)
+        prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query)
 
         # Generate output
         try:
