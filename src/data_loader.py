@@ -1,4 +1,38 @@
 """Load Wikipedia dataset."""
+import re
+
+
+def strip_latex(text: str) -> str:
+    """Remove LaTeX markup from Wikipedia text.
+
+    Wikipedia articles often contain LaTeX math notation like:
+    {\displaystyle W} or {\displaystyle \Delta U=Q-W}
+
+    This function removes these to make chunks more readable.
+
+    Args:
+        text: Raw Wikipedia text with LaTeX markup
+
+    Returns:
+        Cleaned text without LaTeX
+    """
+    # Remove {\displaystyle ...} blocks - these are common in math articles
+    # Need to handle nested braces carefully
+    text = re.sub(r'\{\s*\\displaystyle[^}]*\}', '', text)
+
+    # Remove other common LaTeX commands
+    text = re.sub(r'\\[a-zA-Z]+\{[^}]*\}', '', text)  # \command{arg}
+    text = re.sub(r'\\[a-zA-Z]+', '', text)  # \command
+
+    # Remove standalone LaTeX symbols that might remain
+    text = re.sub(r'[δΔ]\s*[A-Z]\s*=', lambda m: m.group(0).replace('δ', '').replace('Δ', ''), text)
+
+    # Clean up excessive whitespace caused by removal
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)  # Multiple blank lines -> double newline
+    text = re.sub(r' +', ' ', text)  # Multiple spaces -> single space
+
+    return text.strip()
+
 
 def load_wiki_dataset(file_path: str, min_words: int = 100) -> list[dict]:
     """Load Wikipedia articles from text file.
@@ -40,6 +74,10 @@ def load_wiki_dataset(file_path: str, min_words: int = 100) -> list[dict]:
                 # Combine intro + all sections
                 full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
                 full_text = full_text.strip()
+
+                # Strip LaTeX markup to make text more readable
+                full_text = strip_latex(full_text)
+
                 word_count = len(full_text.split())
 
                 # Filter by min_words
@@ -71,6 +109,10 @@ def load_wiki_dataset(file_path: str, min_words: int = 100) -> list[dict]:
     if current_article is not None:
         full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
         full_text = full_text.strip()
+
+        # Strip LaTeX markup to make text more readable
+        full_text = strip_latex(full_text)
+
         word_count = len(full_text.split())
 
         if word_count >= min_words:
