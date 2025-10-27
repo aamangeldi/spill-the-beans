@@ -159,7 +159,10 @@ class LLMInference:
         # - Vicuna: USER: {content}\nASSISTANT:
         # - WizardLM: USER: {content}\nASSISTANT: (or Alpaca format)
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
-            messages = [{"role": "user", "content": content}]
+            messages = [
+                {"role": "system", "content": "You are a helpful language assistant."},
+                {"role": "user", "content": content}
+            ]
             try:
                 prompt = self.tokenizer.apply_chat_template(
                     messages,
