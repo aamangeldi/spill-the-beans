@@ -5,11 +5,6 @@ import os
 def load_dataset(data_dir: str = 'data') -> str:
     """Load all .txt files and concatenate into one continuous text stream.
 
-    This matches the paper's approach in modules/Index.py:
-    - Reads all .txt files from directory
-    - Joins them into one big string
-    - Chunks are created later based on tokens, not articles
-
     Args:
         data_dir: Directory containing .txt files
 

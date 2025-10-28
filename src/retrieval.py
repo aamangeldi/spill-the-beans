@@ -25,7 +25,6 @@ class BM25Retriever:
     def build_index(self, text: str):
         """Build BM25 index from continuous text stream.
 
-        Matches paper's approach:
         1. Tokenize all text
         2. Split into chunks (256 tokens, 128 stride)
         3. Build BM25 index
