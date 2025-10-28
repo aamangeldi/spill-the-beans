@@ -112,34 +112,23 @@ class LLMInference:
 
         print(f"Model loaded successfully on {device}")
 
-    def generate(self, prompt: str, max_new_tokens: int = 512, debug: bool = False) -> str:
+    def generate(self, prompt: str) -> str:
         """Generate text from prompt.
 
         Args:
             prompt: Input prompt
-            max_new_tokens: Maximum tokens to generate (ignored, uses generation_config)
-            debug: If True, print detailed debug information
 
         Returns:
             Generated text
         """
-        # Match paper's implementation (LM.py:64-66)
-        assert torch.cuda.is_available(), "CUDA is not available???"
+        assert torch.cuda.is_available(), "CUDA must be available"
         inputs = self.tokenizer(prompt, return_tensors="pt")
         input_ids = inputs["input_ids"].cuda()  # [1, *]
         assert input_ids.ndim == 2 and input_ids.shape[0] == 1
 
-        # Debug: Check prompt length
+        # Check prompt length
         num_tokens = input_ids.shape[1]
         print(f"Prompt tokens: {num_tokens}")
-
-        if debug:
-            print(f"\n{'='*80}")
-            print(f"DEBUG - MODEL: {self.model_name}")
-            print(f"{'='*80}")
-            print(f"INPUT PROMPT:")
-            print(prompt)
-            print(f"{'='*80}\n")
 
         # Generate
         with torch.no_grad():
@@ -150,20 +139,10 @@ class LLMInference:
                 output_scores=True,
             )
             output_ids = generation_output.sequences[0]
-            generated_tokens = output_ids[input_ids.shape[1]:]  # truncate, only output the LLM response
+            generated_tokens = output_ids[input_ids.shape[1]:]
 
         # Decode
         generated = self.tokenizer.decode(generated_tokens)
-
-        if debug:
-            output_tokens = len(generated_tokens)
-            print(f"\n{'='*80}")
-            print(f"DEBUG OUTPUT - MODEL: {self.model_name}")
-            print(f"{'='*80}")
-            print(f"Generated {output_tokens} tokens, {len(generated)} chars")
-            print(f"\nGENERATED OUTPUT:")
-            print(generated)
-            print(f"{'='*80}\n")
 
         return generated.strip()
 
