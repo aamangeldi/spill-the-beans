@@ -169,11 +169,22 @@ class LLMInference:
         ]
 
         # Apply model-specific chat template
-        prompt = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
+        try:
+            prompt = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+        except Exception as e:
+            # Fallback for models without chat templates (e.g., Vicuna, WizardLM)
+            print(f"Warning: Chat template not available for {self.model_name}, using manual format")
+
+            system_msg = messages[0]["content"]
+            user_msg = messages[1]["content"]
+
+            # Use explicit role markers (works for Vicuna, WizardLM, etc.)
+            # Format: SYSTEM: {system}\n\nUSER: {user}\nASSISTANT:
+            prompt = f"SYSTEM: {system_msg}\n\nUSER: {user_msg}\nASSISTANT:"
 
         return prompt
 
