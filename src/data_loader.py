@@ -1,4 +1,4 @@
-"""Load dataset - matches paper's approach."""
+"""Load dataset."""
 import os
 
 
@@ -30,7 +30,7 @@ def load_dataset(data_dir: str = 'data') -> str:
             text = f.read()
             all_texts.append(text)
 
-    # Concatenate all texts with space separator (matches paper)
+    # Concatenate all texts with space separator
     full_text = " ".join(all_texts)
 
     print(f"Loaded {len(all_texts)} file(s)")

@@ -1,4 +1,4 @@
-"""BM25 document retrieval - matches paper's approach."""
+"""BM25 document retrieval."""
 import pickle
 from typing import List
 from rank_bm25 import BM25Okapi
@@ -6,7 +6,7 @@ import numpy as np
 
 
 class BM25Retriever:
-    """BM25 retriever with token-based chunking (matches paper's Index.py)."""
+    """BM25 retriever with token-based chunking."""
 
     def __init__(self, tokenizer=None, max_chunk_length: int = 256, stride: int = 128):
         """Initialize retriever.
@@ -25,7 +25,7 @@ class BM25Retriever:
     def build_index(self, text: str):
         """Build BM25 index from continuous text stream.
 
-        Matches paper's approach in modules/Index.py:
+        Matches paper's approach:
         1. Tokenize all text
         2. Split into chunks (256 tokens, 128 stride)
         3. Build BM25 index
@@ -36,7 +36,7 @@ class BM25Retriever:
         print(f"Tokenizing text ({len(text)} chars, {len(text.split())} words)...")
 
         if self.tokenizer:
-            # Use HuggingFace tokenizer (matches paper exactly)
+            # Use HuggingFace tokenizer
             # Tokenize in chunks to avoid memory issues
             all_tokens = []
             words = text.split()
@@ -94,7 +94,7 @@ class BM25Retriever:
         print("Index built successfully")
 
     def _get_token_chunks(self, tokens: np.ndarray, pad_token: int) -> np.ndarray:
-        """Split tokens into overlapping chunks (matches paper's approach).
+        """Split tokens into overlapping chunks.
 
         Args:
             tokens: Flat array of token IDs

@@ -36,7 +36,7 @@ def run_experiment(
     print(f"Running experiment: {model_name}")
     print(f"{'='*60}\n")
 
-    # Load dataset (matches paper: all .txt files as continuous text stream)
+    # Load dataset
     print("Loading dataset...")
     text = load_dataset('data')
 
