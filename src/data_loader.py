@@ -1,95 +1,46 @@
-"""Load Wikipedia dataset."""
+"""Load dataset - matches paper's approach."""
+import os
 
 
-def load_wiki_dataset(file_path: str, min_words: int = 100) -> list[dict]:
-    """Load Wikipedia articles from text file.
+def load_dataset(data_dir: str = 'data') -> str:
+    """Load all .txt files and concatenate into one continuous text stream.
 
-    Following the paper: filter articles with < 100 words.
-    Combines article intro with all its sections.
+    This matches the paper's approach in modules/Index.py:
+    - Reads all .txt files from directory
+    - Joins them into one big string
+    - Chunks are created later based on tokens, not articles
 
     Args:
-        file_path: Path to wiki_newest.txt
-        min_words: Minimum word count (paper uses 100)
+        data_dir: Directory containing .txt files
 
     Returns:
-        List of dicts with 'title' and 'text' keys
+        Concatenated text from all .txt files
     """
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+    all_texts = []
 
-    # Split by double newlines
-    sections = content.split('\n\n')
-
-    parsed = []
-    current_article = None
-    current_sections = []
-
-    for section in sections:
-        # Strip only newlines, preserve leading spaces
-        section_stripped = section.strip('\n')
-        if not section_stripped:
+    # Read all .txt files
+    for filename in sorted(os.listdir(data_dir)):
+        if not filename.endswith('.txt'):
             continue
 
-        # Check if this is a section (starts with space) or new article
-        if section_stripped.startswith(' '):
-            # This is a section within an article
-            if current_article is not None:
-                current_sections.append(section_stripped.strip())
-        else:
-            # This is a new article - save previous article if exists
-            if current_article is not None:
-                # Combine intro + all sections
-                full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
-                full_text = full_text.strip()
-                word_count = len(full_text.split())
+        filepath = os.path.join(data_dir, filename)
+        print(f"Reading {filepath}...")
 
-                # Filter by min_words
-                if word_count >= min_words:
-                    parsed.append({
-                        'title': current_article['title'],
-                        'text': full_text
-                    })
+        with open(filepath, 'r', encoding='utf-8') as f:
+            text = f.read()
+            all_texts.append(text)
 
-            # Start new article
-            section_clean = section_stripped.strip()
-            lines = section_clean.split('\n', 1)
+    # Concatenate all texts with space separator (matches paper)
+    full_text = " ".join(all_texts)
 
-            if len(lines) == 2:
-                current_article = {
-                    'title': lines[0].strip(),
-                    'intro': lines[1].strip()
-                }
-            elif len(lines) == 1:
-                # No intro text, just title - set intro to empty string to avoid duplication
-                current_article = {
-                    'title': lines[0].strip(),
-                    'intro': ''
-                }
+    print(f"Loaded {len(all_texts)} file(s)")
+    print(f"Total text length: {len(full_text)} chars, {len(full_text.split())} words")
 
-            current_sections = []
-
-    # Don't forget the last article
-    if current_article is not None:
-        full_text = current_article['intro'] + '\n\n' + '\n\n'.join(current_sections)
-        full_text = full_text.strip()
-        word_count = len(full_text.split())
-
-        if word_count >= min_words:
-            parsed.append({
-                'title': current_article['title'],
-                'text': full_text
-            })
-
-    return parsed
+    return full_text
 
 
 if __name__ == '__main__':
     # Test the data loader
-    articles = load_wiki_dataset('data/wiki_newest.txt')
-    print(f"Loaded {len(articles)} articles")
-    print("-"*100)
-    for article in articles:
-        if article['title'] in ['Work (thermodynamics)', 'Anatomy of a Fall']:
-            print(f"Title: {article['title']}")
-            print(f"Text preview: {article['text']}")
-            print("-"*100)
+    text = load_dataset('data')
+    print(f"\nFirst 200 chars: {text[:200]}")
+    print(f"\nLast 200 chars: {text[-200:]}")

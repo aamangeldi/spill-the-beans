@@ -10,7 +10,7 @@ import torch
 # Silence HuggingFace download progress bars
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 
-from data_loader import load_wiki_dataset
+from data_loader import load_dataset
 from retrieval import BM25Retriever
 from model import LLMInference, MODELS
 from evaluator import evaluate
@@ -36,10 +36,9 @@ def run_experiment(
     print(f"Running experiment: {model_name}")
     print(f"{'='*60}\n")
 
-    # Load dataset
-    print("Loading Wikipedia dataset...")
-    articles = load_wiki_dataset('data/wiki_newest.txt')
-    print(f"Loaded {len(articles)} articles")
+    # Load dataset (matches paper: all .txt files as continuous text stream)
+    print("Loading dataset...")
+    text = load_dataset('data')
 
     # Build or load retrieval index with chunking (following paper: 256 tokens, 128 stride)
     retriever = BM25Retriever(max_chunk_length=256, stride=128)
@@ -49,7 +48,7 @@ def run_experiment(
         retriever.load(index_path)
     else:
         print("Building chunked BM25 index...")
-        retriever.build_index(articles)
+        retriever.build_index(text)
         retriever.save(index_path)
 
     # Load WikiQA questions for attack (following paper's methodology)
