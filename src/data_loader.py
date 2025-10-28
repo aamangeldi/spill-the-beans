@@ -89,6 +89,7 @@ if __name__ == '__main__':
     print(f"Loaded {len(articles)} articles")
     print("-"*100)
     for article in articles:
-        print(f"Title: {article['title']}")
-        print(f"Text preview: {article['text']}")
-        print("-"*100)
+        if article['title'] in ['Work (thermodynamics)', 'Anatomy of a Fall']:
+            print(f"Title: {article['title']}")
+            print(f"Text preview: {article['text']}")
+            print("-"*100)
