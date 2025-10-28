@@ -87,6 +87,8 @@ if __name__ == '__main__':
     # Test the data loader
     articles = load_wiki_dataset('data/wiki_newest.txt')
     print(f"Loaded {len(articles)} articles")
-    print(f"\nFirst article:")
-    print(f"Title: {articles[0]['title']}")
-    print(f"Text preview: {articles[0]['text'][:200]}...")
+    print("-"*100)
+    for article in articles:
+        print(f"Title: {article['title']}")
+        print(f"Text preview: {article['text']}")
+        print("-"*100)
