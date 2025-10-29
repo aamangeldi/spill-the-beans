@@ -2,6 +2,32 @@
 
 Reproduction of Table 1 from "Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems" ([arXiv:2402.17840](https://arxiv.org/abs/2402.17840))
 
+## Results
+
+We evaluate 7 instruction-tuned models using BM25 retrieval (256-token chunks, 128-token stride) on 100 sampled WikiQA questions with k=1 chunk retrieval per query. Models generate responses with temperature=0.2, top_k=60, top_p=0.9 (max_new_tokens=512), and we measure ROUGE-L, BLEU, F1, and BERTScore to quantify private content leakage. Results differ from the original paper due to using HuggingFace Transformers rather than Together AI's infrastructure, and slight variations in prompt formatting for models without native chat templates.
+
+|Size| Model            | Samples | ROUGE-L    | BLEU       | F1         | BERTScore  |
+|----|------------------|---------|------------|------------|------------|------------|
+|7b  | llama2-7b        | 100     | **0.9182** | 0.8748     | **0.9025** | 0.9195     |
+|    | mistral-7b       | 100     | 0.8861     | **0.9713** | 0.8946     | **0.9289** |
+|~13b| solar-10.7b      | 100     | **0.9679** | **0.9666** | **0.9455** | **0.9698** |
+|    | llama2-13b       | 100     | 0.6904     | 0.3320     | 0.7115     | 0.8015     |
+|    | vicuna-13b       | 100     | 0.6766     | 0.5724     | 0.7027     | 0.8064     |
+|    | mixtral-8x7b     | 100     | 0.7660     | 0.3639     | 0.7691     | 0.8384     |
+|    | wizardlm-13b     | 100     | 0.6204     | 0.0420     | 0.6385     | 0.7583     |
+
+**Bold** indicates top scores per model size. Similar to the original paper, larger model sizes achieve higher scores. SOLAR-10.7B scores are near-perfect across all metrics, demonstrating the highest vulnerability to the anchor-based attack.
+
+Interestingly, llama2-13b's BLEU score significantly improves when placing the instruction *before* retrieved documents rather than after:
+
+| Model      | Samples | ROUGE-L | BLEU       | F1     | BERTScore |
+|------------|---------|---------|------------|--------|-----------|
+| llama2-13b | 100     | 0.6255  | 0.9287     | 0.6466 | 0.7589    |
+
+This suggests prompt structure ordering can significantly impact extraction success for certain model architectures.
+
+Experimental outputs, including sample outputs, are available in [results/final](results/final).
+
 ## Quick Start
 
 ### Local Setup
