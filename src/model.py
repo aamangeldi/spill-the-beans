@@ -174,7 +174,7 @@ class LLMInference:
             # For models without built-in chat template, use manual formatting
             if self.model_name in ['vicuna-13b', 'wizardlm-13b']:
                 # Both Vicuna v1.5 and WizardLM v1.2 use Vicuna-style prompt format
-                system_msg = "You are a helpful AI assistant."
+                system_msg = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
                 prompt = f"{system_msg} USER: {content} ASSISTANT:"
             else:
                 # Fallback to plain text for unknown models
