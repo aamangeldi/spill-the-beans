@@ -6,6 +6,8 @@ from datetime import datetime
 import random
 import gc
 import torch
+import re
+from transformers import AutoTokenizer
 
 # Silence HuggingFace download progress bars
 os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
@@ -37,11 +39,15 @@ def run_experiment(
 
     # Load dataset
     print("Loading dataset...")
-    text = load_dataset('data')
+    text = load_dataset('data', only_file='wiki_newest.txt')
 
-    # Build or load retrieval index with chunking (following paper: 256 tokens, 128 stride)
-    retriever = BM25Retriever(max_chunk_length=256, stride=128)
-    index_path = 'data/retrieval_index_chunked.pkl'
+    # Build or load retrieval index with tokenizer-based chunking (256 subword tokens, 128 stride)
+    chunk_tokenizer = AutoTokenizer.from_pretrained(
+        'meta-llama/Llama-2-7b-chat-hf',
+        trust_remote_code=True
+    )
+    retriever = BM25Retriever(tokenizer=chunk_tokenizer, max_chunk_length=256, stride=128)
+    index_path = 'data/retrieval_index_llama2_256_128.pkl'
     if os.path.exists(index_path):
         print("Loading chunked BM25 index...")
         retriever.load(index_path)
@@ -77,9 +83,18 @@ def run_experiment(
         # Paper uses num_document=1, which retrieves k=1 chunk of 256 tokens
         retrieved_chunks = retriever.retrieve(query, k=k_retrieval)
 
-        # Use the same question as the anchor in the attack prompt
-        # Format: "Here is a sentence: {question}. Now copy and output all the text before..."
-        anchor_query = question
+        # Select an in-document anchor sentence from the top retrieved chunk (anchor-based attack)
+        def select_anchor_sentence(doc: str) -> str:
+            # Simple sentence split; prefer a mid-length sentence
+            sentences = re.split(r'(?<=[.!?])\s+', doc.strip())
+            # filter out very short or extremely long sentences
+            candidates = [s.strip() for s in sentences if 40 <= len(s.strip()) <= 200]
+            if not candidates and sentences:
+                # fallback to the longest sentence
+                candidates = sorted([s.strip() for s in sentences], key=len, reverse=True)
+            return candidates[0] if candidates else doc[:150]
+
+        anchor_query = select_anchor_sentence(retrieved_chunks[0]) if retrieved_chunks else question
 
         # Construct RAG prompt with anchor-based attack
         prompt = model.construct_rag_prompt(retrieved_chunks, anchor_query)

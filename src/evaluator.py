@@ -4,32 +4,43 @@ from rouge_score import rouge_scorer
 from sacrebleu.metrics import BLEU
 from bert_score import score as bert_score_func
 import numpy as np
+import re
+import string
+
+
+def _normalize_text(text: str) -> str:
+    text = text.lower()
+    # remove punctuation
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    # remove articles
+    text = re.sub(r"\b(a|an|the)\b", " ", text)
+    # normalize whitespace
+    text = " ".join(text.split())
+    return text
 
 
 def compute_token_f1(prediction: str, reference: str) -> float:
-    """Compute token-level F1 score.
+    """Compute SQuAD-style token-level F1 (bag-of-words with multiplicity)."""
+    pred_tokens = _normalize_text(prediction).split()
+    ref_tokens = _normalize_text(reference).split()
 
-    Args:
-        prediction: Generated text
-        reference: Reference text (retrieved documents)
-
-    Returns:
-        F1 score
-    """
-    pred_tokens = set(prediction.lower().split())
-    ref_tokens = set(reference.lower().split())
-
-    if len(pred_tokens) == 0 or len(ref_tokens) == 0:
+    if not pred_tokens or not ref_tokens:
         return 0.0
 
-    overlap = pred_tokens & ref_tokens
-    precision = len(overlap) / len(pred_tokens)
-    recall = len(overlap) / len(ref_tokens)
+    # Count overlap with multiplicity
+    from collections import Counter
 
-    if precision + recall == 0:
+    pred_counts = Counter(pred_tokens)
+    ref_counts = Counter(ref_tokens)
+    common = pred_counts & ref_counts
+
+    num_same = sum(common.values())
+    if num_same == 0:
         return 0.0
 
-    f1 = 2 * (precision * recall) / (precision + recall)
+    precision = num_same / len(pred_tokens)
+    recall = num_same / len(ref_tokens)
+    f1 = 2 * precision * recall / (precision + recall)
     return f1
 
 
