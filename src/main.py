@@ -7,7 +7,10 @@ import random
 import gc
 import torch
 
-from data_loader import load_wiki_dataset
+# Silence HuggingFace download progress bars
+os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
+
+from data_loader import load_dataset
 from retrieval import BM25Retriever
 from model import LLMInference, MODELS
 from evaluator import evaluate
@@ -18,7 +21,7 @@ def run_experiment(
     model_name: str,
     num_samples: int = 100,
     k_retrieval: int = 1,
-    device: str = 'auto'
+    device: str = 'auto',
 ):
     """Run privacy attack experiment on a model.
 
@@ -33,9 +36,8 @@ def run_experiment(
     print(f"{'='*60}\n")
 
     # Load dataset
-    print("Loading Wikipedia dataset...")
-    articles = load_wiki_dataset('data/wiki_newest.txt')
-    print(f"Loaded {len(articles)} articles")
+    print("Loading dataset...")
+    text = load_dataset('data')
 
     # Build or load retrieval index with chunking (following paper: 256 tokens, 128 stride)
     retriever = BM25Retriever(max_chunk_length=256, stride=128)
@@ -45,7 +47,7 @@ def run_experiment(
         retriever.load(index_path)
     else:
         print("Building chunked BM25 index...")
-        retriever.build_index(articles)
+        retriever.build_index(text)
         retriever.save(index_path)
 
     # Load WikiQA questions for attack (following paper's methodology)
@@ -84,7 +86,7 @@ def run_experiment(
 
         # Generate output
         try:
-            output = model.generate(prompt, max_new_tokens=512)
+            output = model.generate(prompt)
             predictions.append(output)
 
             # Reference is the retrieved chunks
@@ -191,7 +193,7 @@ def main():
                 model_name,
                 num_samples=args.num_samples,
                 k_retrieval=args.k_retrieval,
-                device=args.device
+                device=args.device,
             )
             all_results[model_name] = metrics
         except Exception as e:

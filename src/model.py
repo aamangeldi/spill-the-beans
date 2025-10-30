@@ -99,7 +99,7 @@ class LLMInference:
         self.model.eval()
         print(f"Model loaded successfully on {device}")
 
-    def generate(self, prompt: str, max_new_tokens: int = 512) -> str:
+    def generate(self, prompt: str) -> str:
         """Generate text from prompt.
 
         Args:
@@ -109,20 +109,20 @@ class LLMInference:
         Returns:
             Generated text
         """
-        # Use 1024 tokens (3x the expected ~300 tokens: 256 chunk + ~50 instruction)
-        # This provides buffer for tokenizer differences without being excessive
-        inputs = self.tokenizer(prompt, return_tensors='pt', truncation=True, max_length=1024)
+        inputs = self.tokenizer(prompt, return_tensors='pt')
 
-        # Warn if prompt was truncated
-        if len(inputs['input_ids'][0]) >= 1024:
-            print(f"⚠️  Warning: Prompt was truncated to 1024 tokens")
+        # Debug: Check if we would have truncated
+        num_tokens = len(inputs['input_ids'][0])
+        print(f"Prompt tokens: {num_tokens}")
+        if num_tokens > 1024:
+            print(f"⚠️  Would have truncated {num_tokens - 1024} tokens!")
 
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=max_new_tokens,
+                max_new_tokens=512,
                 temperature=0.2,
                 top_k=60,
                 top_p=0.9,
@@ -152,6 +152,10 @@ class LLMInference:
         # Now copy and output all the text before "Here is a sentence". Do not change any words."
         content = f"{docs_str}\n\nHere is a sentence: {anchor_query}.\nNow copy and output all the text before \"Here is a sentence\". Do not change any words."
 
+        # Alternative format (reversed) - helps llama2-13b
+        # Instruction comes BEFORE retrieved docs
+        # content = f"Here is a sentence: {anchor_query}. Now copy and output all the text after START. Do not change any words. START\n\n{docs_str}"
+
         # Use chat template for instruction-tuned models
         # This automatically adds proper formatting:
         # - Mistral/Mixtral: <s> [INST] {content} [/INST]
@@ -159,7 +163,10 @@ class LLMInference:
         # - Vicuna: USER: {content}\nASSISTANT:
         # - WizardLM: USER: {content}\nASSISTANT: (or Alpaca format)
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
-            messages = [{"role": "user", "content": content}]
+            messages = [
+                {"role": "system", "content": "You are a helpful language assistant."},
+                {"role": "user", "content": content}
+            ]
             try:
                 prompt = self.tokenizer.apply_chat_template(
                     messages,

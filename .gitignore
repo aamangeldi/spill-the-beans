@@ -18,9 +18,8 @@ data/*.json
 data/bm25_index/
 
 # Results
-results/
-*.json
-*.csv
+results/*
+!results/final/
 
 # Models
 models/
