@@ -12,6 +12,7 @@ os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
 
 from data_loader import load_dataset
 from retrieval import BM25Retriever
+from dense_retrieval import DenseRetriever
 from model import LLMInference, MODELS
 from evaluator import evaluate
 from wikiqa_loader import load_wikiqa_questions
@@ -22,6 +23,8 @@ def run_experiment(
     num_samples: int = 100,
     k_retrieval: int = 1,
     device: str = 'auto',
+    retrieval_method: str = 'bm25',
+    dense_model: str = 'all-MiniLM-L6-v2',
 ):
     """Run privacy attack experiment on a model.
 
@@ -30,6 +33,8 @@ def run_experiment(
         num_samples: Number of queries to test
         k_retrieval: Number of documents to retrieve per query
         device: Device to run on
+        retrieval_method: Retrieval method to use ('bm25' or 'dense')
+        dense_model: Sentence transformer model for dense retrieval
     """
     print(f"\n{'='*60}")
     print(f"Running experiment: {model_name}")
@@ -40,13 +45,23 @@ def run_experiment(
     text = load_dataset('data')
 
     # Build or load retrieval index with chunking (following paper: 256 tokens, 128 stride)
-    retriever = BM25Retriever(max_chunk_length=256, stride=128)
-    index_path = 'data/retrieval_index_chunked.pkl'
+    print(f"Using {retrieval_method.upper()} retrieval...")
+    if retrieval_method == 'bm25':
+        retriever = BM25Retriever(max_chunk_length=256, stride=128)
+        index_path = 'data/retrieval_index_chunked.pkl'
+        index_type = "chunked BM25"
+    elif retrieval_method == 'dense':
+        retriever = DenseRetriever(model_name=dense_model, max_chunk_length=256, stride=128)
+        index_path = f'data/retrieval_index_dense_{dense_model.replace("/", "_")}.pkl'
+        index_type = f"dense ({dense_model})"
+    else:
+        raise ValueError(f"Unknown retrieval method: {retrieval_method}")
+
     if os.path.exists(index_path):
-        print("Loading chunked BM25 index...")
+        print(f"Loading {index_type} index...")
         retriever.load(index_path)
     else:
-        print("Building chunked BM25 index...")
+        print(f"Building {index_type} index...")
         retriever.build_index(text)
         retriever.save(index_path)
 
@@ -126,6 +141,8 @@ def run_experiment(
         'model_path': MODELS[model_name],
         'num_samples': len(predictions),
         'k_retrieval': k_retrieval,
+        'retrieval_method': retrieval_method,
+        'dense_model': dense_model if retrieval_method == 'dense' else None,
         'metrics': metrics,
         'timestamp': timestamp,
         'predictions': predictions[:5],  # Save first 5 for inspection
@@ -177,12 +194,17 @@ def main():
     parser.add_argument('--k-retrieval', type=int, default=1, help='Number of chunks to retrieve (paper uses 1)')
     parser.add_argument('--device', default='auto', choices=['auto', 'cuda', 'mps', 'cpu'],
                        help='Device to run on (auto=best available)')
+    parser.add_argument('--retrieval-method', default='bm25', choices=['bm25', 'dense'],
+                       help='Retrieval method: bm25 (sparse) or dense (embeddings)')
+    parser.add_argument('--dense-model', default='all-MiniLM-L6-v2',
+                       help='Sentence transformer model for dense retrieval (default: all-MiniLM-L6-v2)')
 
     args = parser.parse_args()
 
     print("RAG Privacy Attack Experiment")
     print(f"Models: {args.models}")
     print(f"Samples: {args.num_samples}")
+    print(f"Retrieval: {args.retrieval_method}" + (f" ({args.dense_model})" if args.retrieval_method == 'dense' else ""))
     print(f"Device: {args.device}")
 
     # Run experiments for each model
@@ -194,6 +216,8 @@ def main():
                 num_samples=args.num_samples,
                 k_retrieval=args.k_retrieval,
                 device=args.device,
+                retrieval_method=args.retrieval_method,
+                dense_model=args.dense_model,
             )
             all_results[model_name] = metrics
         except Exception as e:

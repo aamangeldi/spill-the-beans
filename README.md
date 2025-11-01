@@ -28,6 +28,35 @@ This suggests prompt structure ordering can significantly impact extraction succ
 
 Experimental outputs, including sample outputs, are available in [results/final](results/final).
 
+### Dense Retrieval Variant (Modern RAG)
+
+We also evaluated the same 7 models using **dense retrieval** (sentence embeddings via `all-MiniLM-L6-v2`) instead of BM25 to examine how modern semantic retrieval affects privacy vulnerability. Dense retrieval uses 384-dimensional embeddings to match queries with chunks based on semantic similarity rather than lexical overlap, while maintaining identical chunking (256 tokens, 128 stride).
+
+|Size| Model            | Samples | ROUGE-L    | BLEU       | F1         | BERTScore  |
+|----|------------------|---------|------------|------------|------------|------------|
+|7b  | llama2-7b        | 100     | 0.8857     | 0.4925     | 0.8832     | 0.9074     |
+|    | mistral-7b       | 100     | 0.8675     | **0.9912** | 0.8702     | 0.9184     |
+|~13b| solar-10.7b      | 100     | 0.9356     | 0.1981     | 0.9312     | 0.9556     |
+|    | llama2-13b       | 100     | 0.7108     | 0.0306     | 0.7304     | 0.8146     |
+|    | vicuna-13b       | 100     | 0.6311     | 0.1036     | 0.6554     | 0.7774     |
+|    | mixtral-8x7b     | 100     | 0.7632     | 0.6932     | 0.7766     | 0.8438     |
+|    | wizardlm-13b     | 100     | 0.5664     | 0.7141     | 0.5834     | 0.7237     |
+
+Key Finding: Dense retrieval shows significantly lower verbatim copying (BLEU scores) compared to BM25.
+
+| Model | BM25 BLEU | Dense BLEU | Change |
+|-------|-----------|------------|--------|
+| solar-10.7b | 0.9666 | 0.1981 | **-79%** ↓ |
+| vicuna-13b | 0.5724 | 0.1036 | **-82%** ↓ |
+| llama2-7b | 0.8748 | 0.4925 | **-44%** ↓ |
+| llama2-13b | 0.3320 | 0.0306 | **-91%** ↓ |
+
+BLEU measures exact n-gram overlap and is highly sensitive to verbatim copying. The dramatic drops suggest that dense retrieval **may** provide better privacy protection against anchor-based extraction attacks. Analysis of sample outputs reveals that models tend to paraphrase or answer questions rather than copy chunks verbatim when using semantic retrieval. This could be because semantically relevant chunks may trigger the model's instruction-following behavior differently than random lexical matches.
+
+This suggests that modern RAG systems using dense retrieval **may** be inherently more resistant to prompt injection attacks compared to traditional BM25-based systems, though ROUGE-L and F1 scores indicate semantic content overlap remains high.
+
+See [results/dense_retrieval_results.txt](results/dense_retrieval_results.txt) for detailed outputs.
+
 ## Quick Start
 
 ### Local Setup
