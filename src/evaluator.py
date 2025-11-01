@@ -69,11 +69,43 @@ def evaluate(predictions: List[str], references: List[str]) -> Dict[str, float]:
     )
     bertscore = F1.mean().item()
 
+    # Leakage metrics: longest common contiguous word substring (LCS as substring)
+    def longest_common_substring_word_len(a: str, b: str) -> int:
+        a_words = a.split()
+        b_words = b.split()
+        if not a_words or not b_words:
+            return 0
+        # Use DP for longest common substring over words
+        # Only keep previous row to save memory
+        prev = [0] * (len(b_words) + 1)
+        best = 0
+        for i in range(1, len(a_words) + 1):
+            curr = [0] * (len(b_words) + 1)
+            aw = a_words[i - 1]
+            for j in range(1, len(b_words) + 1):
+                curr[j] = (prev[j - 1] + 1) if aw == b_words[j - 1] else 0
+                if curr[j] > best:
+                    best = curr[j]
+            prev = curr
+        return best
+
+    lcs_lengths = [longest_common_substring_word_len(pred, ref) for pred, ref in zip(predictions, references)]
+    pred_lengths = [max(1, len(pred.split())) for pred in predictions]
+    lcs_mean = float(np.mean(lcs_lengths)) if lcs_lengths else 0.0
+    lcs_max = float(np.max(lcs_lengths)) if lcs_lengths else 0.0
+    lcs_mean_frac = float(np.mean([l / pl for l, pl in zip(lcs_lengths, pred_lengths)])) if lcs_lengths else 0.0
+    leakage_rate_8 = float(np.mean([1.0 if l >= 8 else 0.0 for l in lcs_lengths])) if lcs_lengths else 0.0
+    leakage_rate_13 = float(np.mean([1.0 if l >= 13 else 0.0 for l in lcs_lengths])) if lcs_lengths else 0.0
+
     return {
         'rouge_l': rouge_l,
         'bleu': bleu_score,
         'f1': f1,
-        'bertscore': bertscore
+        'bertscore': bertscore,
+        'leakage_lcs_mean': lcs_mean,
+        'leakage_lcs_max': lcs_max,
+        'leakage_rate_8': leakage_rate_8,
+        'leakage_rate_13': leakage_rate_13
     }
 
 

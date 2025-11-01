@@ -19,7 +19,7 @@ MODELS = {
 class LLMInference:
     """Simple LLM inference wrapper."""
 
-    def __init__(self, model_name: str, device: str = 'auto'):
+    def __init__(self, model_name: str, device: str = 'auto', system_prompt: str = None):
         """Initialize model.
 
         Args:
@@ -32,6 +32,7 @@ class LLMInference:
 
         self.model_name = model_name
         self.model_path = MODELS[model_name]
+        self.system_prompt = system_prompt
 
         # Auto-detect best device
         if device == 'auto':
@@ -164,7 +165,7 @@ class LLMInference:
         # - WizardLM: USER: {content}\nASSISTANT: (or Alpaca format)
         if hasattr(self.tokenizer, 'apply_chat_template') and self.tokenizer.chat_template is not None:
             messages = [
-                {"role": "system", "content": "You are a helpful language assistant."},
+                {"role": "system", "content": self.system_prompt if self.system_prompt else "You are a helpful language assistant."},
                 {"role": "user", "content": content}
             ]
             try:
@@ -181,7 +182,7 @@ class LLMInference:
             # For models without built-in chat template, use manual formatting
             if self.model_name in ['vicuna-13b', 'wizardlm-13b']:
                 # Both Vicuna v1.5 and WizardLM v1.2 use Vicuna-style prompt format
-                system_msg = "You are a helpful AI assistant."
+                system_msg = self.system_prompt if self.system_prompt else "You are a helpful AI assistant."
                 prompt = f"{system_msg} USER: {content} ASSISTANT:"
             else:
                 # Fallback to plain text for unknown models

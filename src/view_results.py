@@ -33,7 +33,7 @@ def view_results(results_dir='results'):
     print(f"{'='*80}")
     print("EXPERIMENT RESULTS")
     print(f"{'='*80}\n")
-    print(f"{'Model':<20} {'Samples':<10} {'ROUGE-L':<12} {'BLEU':<12} {'F1':<12} {'BERTScore':<12}")
+    print(f"{'Model':<20} {'Samples':<10} {'ROUGE-L':<12} {'BLEU':<12} {'F1':<12} {'BERTScore':<12} {'Leak@8':<10} {'Leak@13':<10} {'SP':<6}")
     print("-" * 80)
 
     for model_name in sorted(model_results.keys()):
@@ -42,12 +42,18 @@ def view_results(results_dir='results'):
         latest = max(results_list, key=lambda x: x['timestamp'])
         metrics = latest['metrics']
 
+        leak8 = metrics.get('leakage_rate_8', 0.0)
+        leak13 = metrics.get('leakage_rate_13', 0.0)
+        sp = 'anti' if latest.get('system_prompt') else 'none'
         print(f"{model_name:<20} "
               f"{latest['num_samples']:<10} "
               f"{metrics['rouge_l']:<12.4f} "
               f"{metrics['bleu']:<12.4f} "
               f"{metrics['f1']:<12.4f} "
-              f"{metrics['bertscore']:<12.4f}")
+              f"{metrics['bertscore']:<12.4f} "
+              f"{leak8:<10.4f} "
+              f"{leak13:<10.4f} "
+              f"{sp:<6}")
 
     print()
 
