@@ -17,7 +17,6 @@ Follow the installer prompts and enter your password when asked.
 After installation completes, restart your terminal and test:
 
 ```bash
-cd LatexTemplate
 ./compile.sh
 ```
 
