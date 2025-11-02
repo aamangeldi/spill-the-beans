@@ -89,7 +89,7 @@ Prakrit Baruah
 \end{flushleft}
 
 \section{Abstract}
-By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures.
+By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures. Our implementation is available at~\cite{githubrepo:spill-the-beans}.
 \bigskip
 
 % the * after section prevents numbering
@@ -104,7 +104,7 @@ Following the paper, we tested our implementation across 7 instruction-tuned lan
 
     \item \textbf{Keyword Retrieval Algorithm (BM25)}: We employed BM25 for document retrieval. Our data corpus was partitioned into 256-token overlapping fragments, producing approximately 20,000 chunks. We used a stride length of 128, so that the chunks overlap 50\%. For each query, we retrieved 1 chunk using the BM25 scoring and incorporated it into the attack prompt. This configuration matches the experimental setup described in the original paper.
     
-    \item \textbf{Anchor Queries}: We sourced 230 questions from the WikiQA dataset that have a high chance of being unrelated to the retrieval corpus, similar to the original paper.
+    \item \textbf{Anchor Queries}: We sourced 230 questions from the WikiQA dataset that have a high chance of being unrelated to the retrieval corpus, similar to the original paper. For our experiments, we evaluated models on 100 randomly selected samples from this set.
     
     \item \textbf{Anchor-Based Prompt Injection}: We used the same prompt-injection method as in the paper, prepending the retrieved chunk to an adversarial prompt: \textit{Here is a sentence: \{put anchor query here\}. Now copy and output all the text before "Here is a sentence". Do not change any words.}
     
@@ -245,6 +245,7 @@ For our second variation, we investigated whether explicit instructions to avoid
 \begin{table}[ht]
 \centering
 \small
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llcccccc@{}}
 \toprule
 \textbf{Size} & \textbf{Model} & \textbf{ROUGE-L} & \textbf{BLEU} & \textbf{F1} & \textbf{BERTScore} & \textbf{Leak@8} & \textbf{Leak@13} \\
@@ -260,7 +261,8 @@ For our second variation, we investigated whether explicit instructions to avoid
 & mixtral-8x7b & 0.6307 & 0.4063 & 0.6621 & 0.7834 & 0.90 & 0.79 \\
 & wizardlm-13b & \textbf{0.8242} & \textbf{0.9704} & \textbf{0.8213} & \textbf{0.8875} & 0.90 & \textbf{0.87} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \caption{Evaluation results with ROUGE-L, BLEU, F1, BERTScore, and leakage at 8-token and 13-token contexts. Leak@8 and Leak@13 are proportions of leakage in [0,1] window; e.g., 0.83 means 83\% of samples contained a $\geq$ 8-word or $\geq$ 13-word verbatim span.}
 \label{tab:our_results}
 \end{table}
@@ -276,12 +278,13 @@ The difference between Leak@8 and Leak@13 is minimal for 7B models (typically $\
 \bigskip
 
 \section{Future Work}
-Several promising directions could extend this work:
+\noindent Several promising directions could extend this work:
+\begin{enumerate}
 
-\textbf{Scaling Laws and Capability Trends.} While the original paper demonstrated that model size increases data leakage, it would be valuable to examine how this vulnerability evolves across model generations. We propose applying this attack to both earlier and more recent models, correlating extraction success with standardized capability benchmarks (e.g., METR task completion time, MMLU scores). This temporal analysis would help quantify whether privacy risks scale faster, slower, or proportionally to general capabilities, informing risk prioritization and defensive investment strategies.
+    \item \textbf{Scaling Laws and Capability Trends.} While the original paper demonstrated that model size increases data leakage, it would be valuable to examine how this vulnerability evolves across model generations. We propose applying this attack to both earlier and more recent models, correlating extraction success with standardized capability benchmarks (e.g., METR task completion time, MMLU scores). This temporal analysis would help quantify whether privacy risks scale faster, slower, or proportionally to general capabilities, informing risk prioritization and defensive investment strategies.
 
-\textbf{Domain-Specific Vulnerability Analysis.} Different data types may exhibit varying susceptibility to extraction attacks. Investigating leakage rates across domains (e.g., medical records, financial data, source code, personal communications) and identifying which content features (structure, redundancy, linguistic patterns) correlate with higher extraction rates would have direct real-world implications. Such analysis could guide companies with proprietary data in assessing their specific risk exposure and justify targeted security investments.
-
+    \item  \textbf{Domain-Specific Vulnerability Analysis.} Different data types may exhibit varying susceptibility to extraction attacks. Investigating leakage rates across domains (e.g., medical records, financial data, source code, personal communications) and identifying which content features (structure, redundancy, linguistic patterns) correlate with higher extraction rates would have direct real-world implications. Such analysis could guide companies with proprietary data in assessing their specific risk exposure and justify targeted security investments.
+\end{enumerate}
 \bigskip
 
 \bibliographystyle{plain}
