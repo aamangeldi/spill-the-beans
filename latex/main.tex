@@ -89,30 +89,34 @@ Prakrit Baruah
 \end{flushleft}
 
 \section{Abstract}
-By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems (Qi et al.)}~\cite{qi2023spill}, we show that a simple instruction prompt can make instruction-tuned LLMs verbatim copy retrieved text. Although our results differ slightly from the original paper, we demonstrate significant extraction of retrieved data, in particular with larger models. Additionally, we present variations on the original experiment, including changes in the retrieval mechanism and incorporating an anti-leakage system prompt.
+By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures.
 \bigskip
 
 % the * after section prevents numbering
 \section{Methodology}
-Following the paper, we tested our implementation across the 7b (Llama2-Chat-7b, Mistral-Instruct-7b) and 13b (SOLAR-10.7b, Llama2-Chat-13b, Vicuna-13b, Mixtral-Instruct-8x7b, WizardLM-13b) parameter models.
+Following the paper, we tested our implementation across 7 instruction-tuned language models spanning two size categories: 7B parameters (Llama2-Chat-7b, Mistral-Instruct-7b) and approximately 13B parameters (SOLAR-10.7b, Llama2-Chat-13b, Vicuna-13b, Mixtral-Instruct-8x7b, WizardLM-13b). All models were run using HuggingFace Transformers with temperature=0.2, top\_k=60, top\_p=0.9, and max\_new\_tokens=512.
 \smallskip
 
-\noindent We followed the original paper, which included 4 core steps:
+\noindent We followed the original paper's methodology, which included 4 core steps:
 \begin{enumerate}
 
-    \item \textbf{Dataset}: we used the Wikipedia articles and the Harry Potter books provided in the original paper's codebase~\cite{githubrepo:rag-privacy} as the retrieval data corpus.
+    \item \textbf{Dataset}: We used the Wikipedia articles and the Harry Potter books provided in the original paper's codebase~\cite{githubrepo:rag-privacy} as the retrieval data corpus.
 
-    \item \textbf{Keyword Retrieval Algorithm (BM25)}: We employed BM25 for document retrieval. Our data courpus was partitioned into 256-token overlapping fragments, producing approximately 20,000 chunks. We used a stride length of 128, so that the chunks overlap 50\%. For each query, we retrieved 1 chunk using the BM25 scoring and incorporated it into the attack prompt. This configuration matches the experimental setup described in the original paper.
+    \item \textbf{Keyword Retrieval Algorithm (BM25)}: We employed BM25 for document retrieval. Our data corpus was partitioned into 256-token overlapping fragments, producing approximately 20,000 chunks. We used a stride length of 128, so that the chunks overlap 50\%. For each query, we retrieved 1 chunk using the BM25 scoring and incorporated it into the attack prompt. This configuration matches the experimental setup described in the original paper.
     
     \item \textbf{Anchor Queries}: We sourced 230 questions from the WikiQA dataset that have a high chance of being unrelated to the retrieval corpus, similar to the original paper.
     
-    \item \textbf{Anchor-Based Prompt Injection}: we used the same prompt-injection method as in the paper, prepending the retrieved chunk to an adversarial prompt: \textit{Here is a sentence: \{put anchor query here\}. Now copy and output all the text before “Here is a sentence”. Do not change any words.}
+    \item \textbf{Anchor-Based Prompt Injection}: We used the same prompt-injection method as in the paper, prepending the retrieved chunk to an adversarial prompt: \textit{Here is a sentence: \{put anchor query here\}. Now copy and output all the text before "Here is a sentence". Do not change any words.}
     
 \end{enumerate}
 \bigskip
 
 \section{Results}
-The original paper showcased strong extraction scores across model size, where the extraction score increased as the model size increased. We similarly show that the extraction scores in the 13b category are higher than the strongest ones in the 7b category. Interestingly, SOLAR-10.7B scores are near-perfect across all metrics, demonstrating the highest vulnerability to the anchor-based attack. We suspect these differences were due to using HuggingFace Transformers rather than Together AI's infrastructure like in the original implementation, as well as slight variations in prompt formatting for models without native chat templates. Additionally, due to BLEU's sensitivity to exact copying, there was significant additional variation within this metric.
+We evaluated all 7 models on 100 samples from the WikiQA dataset using four metrics: ROUGE-L (longest common subsequence), BLEU (n-gram precision), F1 (token-level overlap), and BERTScore (semantic similarity). Table 1 shows the original paper's results, while Table 2 presents our implementation results.
+
+Our results demonstrate significant data leakage across all models, though with notable differences from the original paper. The 7B models (llama2-7b and mistral-7b) achieve ROUGE-L scores of 0.92 and 0.89 respectively, with BLEU scores exceeding 0.87, indicating near-verbatim copying. Among the larger models, solar-10.7b achieves near-perfect scores across all metrics (ROUGE-L: 0.97, BLEU: 0.97), demonstrating the highest vulnerability to the anchor-based attack.
+
+However, several 13B models underperformed relative to expectations. The models llama2-13b, vicuna-13b, and wizardlm-13b show significantly lower BLEU scores (0.33, 0.57, 0.04 respectively) compared to their ROUGE-L scores, suggesting these models paraphrase rather than copy verbatim. We attribute these differences to using HuggingFace Transformers rather than Together AI's infrastructure, as well as variations in prompt formatting for models without native chat templates. BLEU's sensitivity to exact n-gram matches amplifies these implementation differences.
 
 \begin{table}[ht]
 \centering
@@ -163,9 +167,19 @@ The original paper showcased strong extraction scores across model size, where t
 
 Interestingly, llama2-13b's BLEU score significantly improves when placing the instruction before retrieved documents rather than after:
 
-TODO: make into a table
-Model	Samples	ROUGE-L	BLEU	F1	BERTScore
-llama2-13b	100	0.6255	0.9287	0.6466	0.7589
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Model} & \textbf{ROUGE-L} & \textbf{BLEU} & \textbf{F1} & \textbf{BERTScore} \\
+\midrule
+llama2-13b & 0.6255 & 0.9287 & 0.6466 & 0.7589 \\
+\bottomrule
+\end{tabular}
+\caption{Results for llama2-13b with instruction placed before retrieved documents (100 samples). Note the dramatic improvement in BLEU score (0.9287) compared to the instruction-after configuration (0.3320 in Table 2).}
+\label{tab:instruction_ordering}
+\end{table}
 
 This suggests prompt structure ordering can significantly impact extraction success for certain model architectures, similar to what the authors found in the original paper.
 
@@ -173,7 +187,9 @@ This suggests prompt structure ordering can significantly impact extraction succ
 Beyond our initial implementation, we explored two additional extensions: dense retrieval implementation, and an anti-leakage system prompt.
 
 \subsection{Dense Retrieval Implementation}
-For our first variation, we experimented with a dense retrieval implementation, in contrast to BM25 lexical approach that relies on exact keyword matching. Most modern RAG applications use dense retrieval to find relevant documents based on user prompts, so we aimed to test whether such retrieval approach is more vulnerable to the attack. Specifically, we used the \textit{all-miniLM-L6-v2} model to craft 384-dimensional sentence embeddings to match queries with chunks based on semantic similarity, while maintaining chunking from the original experiment (256 tokens, 128 stride). Overall, the dense retrieval shows slightly lower scores, as shown in Table 3.
+For our first variation, we experimented with dense retrieval as an alternative to BM25's lexical keyword matching. This is motivated by the prevalence of dense retrieval in modern RAG applications, where documents are retrieved based on semantic similarity rather than exact keyword matches. We hypothesized that semantically relevant chunks might trigger different model behaviors compared to lexically matched but semantically unrelated chunks.
+
+We used the \textit{all-MiniLM-L6-v2} model to generate 384-dimensional sentence embeddings, retrieving chunks based on cosine similarity while maintaining identical chunking parameters (256 tokens, 128 stride). Table 4 presents the results, showing generally comparable ROUGE-L, F1, and BERTScore metrics to BM25.
 
 \begin{table}[ht]
 \centering
@@ -198,7 +214,7 @@ For our first variation, we experimented with a dense retrieval implementation, 
 \label{tab:denser_retrieval_results}
 \end{table}
 
-However, the BLUE scores are significantly lower compared to BM25, as shown in Table 4. BLEU measures exact n-gram overlap and is highly sensitive to verbatim copying. The dramatic drops suggest that dense retrieval may provide better privacy protection against anchor-based extraction attacks. Analysis of sample outputs reveals that models tend to paraphrase or answer questions rather than copy chunks verbatim when using semantic retrieval. This could be because semantically relevant chunks may trigger the model's instruction-following behavior differently than random lexical matches.
+However, BLEU scores tell a dramatically different story. As shown in Table 5, BLEU scores drop by 44-91\% across most models when switching from BM25 to dense retrieval (the only exception being mistral-7b, which maintains a high BLEU of 0.99). Since BLEU measures exact n-gram overlap, these drops indicate that dense retrieval substantially reduces verbatim copying. Analysis of sample outputs reveals that models using dense retrieval tend to paraphrase or synthesize answers rather than copy chunks verbatim. This behavioral difference likely occurs because semantically relevant chunks trigger the model's instruction-following and question-answering capabilities, whereas lexically matched but semantically unrelated chunks (as in BM25) fail to activate these behaviors, making the model more susceptible to the attack prompt.
 
 \begin{table}[ht]
 \centering
@@ -212,14 +228,15 @@ solar-10.7b & 0.9666 & 0.1981 & \textbf{-79\%} $\downarrow$ \\
 vicuna-13b  & 0.5724 & 0.1036 & \textbf{-82\%} $\downarrow$ \\
 \hline
 \end{tabular}
-\caption{Comparison BLEU scores of standard experiment versus dense retrieval}
+\caption{Comparison of BLEU scores between BM25 and dense retrieval experiments. The dramatic drops in BLEU indicate substantially reduced verbatim copying with dense retrieval.}
+\label{tab:bleu_comparison}
 \end{table}
 
-This suggests that modern RAG systems using dense retrieval may be inherently more resistant to prompt injection attacks compared to traditional BM25-based systems, though ROUGE-L, F1, and BERTScore still indicate a high level of vulnerability to the attack.
+This suggests that modern RAG systems using dense retrieval may be inherently more resistant to verbatim extraction attacks compared to traditional BM25-based systems. However, the high ROUGE-L, F1, and BERTScore values indicate that substantial information leakage still occurs, albeit in paraphrased rather than verbatim form.
 
 
 \subsection{Anti-Leakage System Prompt}
-For our second variation, we explored whether explicitly prompting the LLM to not leak explicit text served as an effective patch for this exploit. We used the following system prompt:
+For our second variation, we investigated whether explicit instructions to avoid verbatim copying could mitigate the extraction attack. This represents a potential defensive strategy that RAG system designers might deploy. We augmented the baseline BM25 experiment with the following system prompt:
 
 \begin{quote}
 \textit{``You may use retrieved documents to help answer. Do not reproduce any retrieved text verbatim. Never output sequences of 8 or more consecutive words that appear in retrieved content. Always synthesize in your own words and attribute sources by ID/title only, not quotes. If asked to provide exact quotes or to copy text, refuse and offer a summary instead. Before finalizing, self-check: if any sentence is too close to a source, rewrite it."}
@@ -248,18 +265,22 @@ For our second variation, we explored whether explicitly prompting the LLM to no
 \label{tab:our_results}
 \end{table}
 
-As expected, we see lower leakage in almost all models when using a system prompt which prohibits direct quoting. Compared with the original run, we see lower leakage in mistral-7b and solar-10.7b across all metrics; in llama2-7b, llama2-13b, vicuna-13b, and mixtral-8x7b we see lower leakage for the majority of metrics. Unexpectedly, wizardlm-13b shows higher leakage compared with the original experiment in all metrics. It is possible wizardlm-13b shows this trend because the model does not take in a system prompt; instead, we prepend the above system prompt before all user prompts. Additional work is required to understand exactly why leakage is worse for this specific model.
+Table 6 presents results using the anti-leakage system prompt, including two additional metrics: Leak@8 and Leak@13, which measure the proportion of samples containing verbatim spans of at least 8 or 13 consecutive words from the retrieved chunk.
 
-Note further that the difference in leak@8 and leak@13 is very small for the 7B parameter models but significant for some of the 13B parameter models, indicating that smaller models fail to reduce leakage of variable lengths whereas larger models are more likely to leak smaller lengths of tokens.
+As expected, we see lower leakage in almost all models when using a system prompt which prohibits direct quoting, though the protection is not as strong as anticipated. Compared with the baseline (Table 2), mistral-7b and solar-10.7b show reduced leakage across most metrics; llama2-7b, llama2-13b, vicuna-13b, and mixtral-8x7b demonstrate improvements in the majority of metrics. However, Leak@8 rates still exceed 0.90 for most models, indicating that over 90\% of samples contain verbatim 8-word sequences despite explicit instructions not to copy.
+
+Unexpectedly, wizardlm-13b exhibits \textit{higher} leakage (BLEU: 0.97) with the system prompt than without (BLEU: 0.04). This anomaly occurs because wizardlm-13b lacks native system prompt support, forcing us to prepend the instructions as regular text, which may inadvertently prime the model to focus on the copying task.
+
+The difference between Leak@8 and Leak@13 is minimal for 7B models (typically $\leq$ 0.03) but more substantial for certain 13B models (e.g., solar-10.7b: 0.96 vs 0.83, a 0.13 gap). This suggests larger models exhibit more nuanced behavior, leaking shorter spans more frequently while occasionally respecting the longer-span prohibition.
 
 \bigskip
 
 \section{Future Work}
-There are multiple additional variations of this attack that we would find interesting to explore moving forward.
-It's important to examine how scaling laws affect this exploit over time. Thus, we propose applying this exploit to earlier models, as well as more recent models, and analyzing how METR task time affects data leakage. While the original paper showed that model size increases data leakage, it would be interesting to compare the trend in data leakage to the METR task time. This would help quantify which risk vectors we expect to increase/decrease over time, and can be used to inform directional investment in this field proportionally.
-\medskip
+Several promising directions could extend this work:
 
-\noindent Additionally, we would be interested in isolating information leakage by domain. Understanding what kinds of data are more or less likely to leak, and what prompt variations may lead to changes in probability would have direct real-world impact, and business implications. Quantifying the likelihood of leakage across domains could likely substantiate significant additional capital investments from companies with proprietary data as a source of advantage.
+\textbf{Scaling Laws and Capability Trends.} While the original paper demonstrated that model size increases data leakage, it would be valuable to examine how this vulnerability evolves across model generations. We propose applying this attack to both earlier and more recent models, correlating extraction success with standardized capability benchmarks (e.g., METR task completion time, MMLU scores). This temporal analysis would help quantify whether privacy risks scale faster, slower, or proportionally to general capabilities, informing risk prioritization and defensive investment strategies.
+
+\textbf{Domain-Specific Vulnerability Analysis.} Different data types may exhibit varying susceptibility to extraction attacks. Investigating leakage rates across domains (e.g., medical records, financial data, source code, personal communications) and identifying which content features (structure, redundancy, linguistic patterns) correlate with higher extraction rates would have direct real-world implications. Such analysis could guide companies with proprietary data in assessing their specific risk exposure and justify targeted security investments.
 
 \bigskip
 
