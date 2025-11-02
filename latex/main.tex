@@ -1,5 +1,5 @@
 \documentclass[10pt,letterpaper]{article}
-\usepackage[top=0.85in,left=0.85in,footskip=0.75in,marginparwidth=2in]{geometry}
+\usepackage[top=0.85in,left=1in,right=1in,bottom=1in,footskip=0.75in]{geometry}
 
 % use Unicode characters - try changing the option if you run into troubles with special characters (e.g. umlauts)
 \usepackage[utf8]{inputenc}
@@ -24,8 +24,9 @@
 % text layout - change as needed
 \raggedright
 \setlength{\parindent}{0.5cm}
-\textwidth 5.25in 
-\textheight 8.75in
+% Text width and height now controlled by geometry package
+%\textwidth 5.25in
+%\textheight 8.75in
 
 % Remove % for double line spacing
 %\usepackage{setspace} 
@@ -50,8 +51,9 @@
 \fancyhf{}
 \rfoot{\thepage/\pageref{LastPage}}
 \renewcommand{\footrule}{\hrule height 2pt \vspace{2mm}}
-\fancyheadoffset[L]{2.25in}
-\fancyfootoffset[L]{2.25in}
+% Removed asymmetric offsets for balanced margins
+%\fancyheadoffset[L]{2.25in}
+%\fancyfootoffset[L]{2.25in}
 
 % use \textcolor{color}{text} for colored text (e.g. highlight to-do areas)
 \usepackage{color}
@@ -89,7 +91,7 @@ Prakrit Baruah
 \end{flushleft}
 
 \section{Abstract}
-By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures. Our implementation is available at~\cite{githubrepo:spill-the-beans}.
+By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures. Our implementation is available on GitHub~\cite{githubrepo:spill-the-beans}.
 \bigskip
 
 % the * after section prevents numbering
@@ -287,6 +289,6 @@ The difference between Leak@8 and Leak@13 is minimal for 7B models (typically $\
 \end{enumerate}
 \bigskip
 
-\bibliographystyle{plain}
+\bibliographystyle{unsrt}
 \bibliography{library}
 \end{document}
