@@ -91,12 +91,12 @@ Prakrit Baruah
 \end{flushleft}
 
 \section{Abstract}
-By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction with BLEU scores exceeding 0.87 for several models, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which reduces verbatim copying (44-91\% BLEU decrease) but maintains high semantic leakage, and (2) anti-leakage system prompts, which provide minimal protection with Leak@8 rates still exceeding 90\% for most models. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures. Our implementation is available on GitHub~\cite{githubrepo:spill-the-beans}.
+By reimplementing \textit{Follow My Instruction and Spill the Beans: Scalable Data Extraction from Retrieval-Augmented Generation Systems}~\cite{qi2023spill}, we demonstrate that a simple anchor-based prompt injection can make instruction-tuned LLMs verbatim copy retrieved text from RAG systems. Testing across 7 models (7B and 13B parameters), we observe significant data extraction across multiple metrics, confirming the original paper's findings despite implementation differences. We further explore two extensions: (1) dense retrieval, which substantially reduces verbatim copying compared to BM25 but still exhibits high text similarity scores, and (2) anti-leakage system prompts, which provide minimal protection with over 90\% of samples still containing verbatim sequences despite explicit instructions not to copy. Our results highlight persistent privacy vulnerabilities in RAG systems and the limited effectiveness of simple defensive measures. Our implementation is available on GitHub~\cite{githubrepo:spill-the-beans}.
 \bigskip
 
 % the * after section prevents numbering
 \section{Methodology}
-Following the paper, we tested our implementation across 7 instruction-tuned language models spanning two size categories: 7B parameters (Llama2-Chat-7b, Mistral-Instruct-7b) and approximately 13B parameters (SOLAR-10.7b, Llama2-Chat-13b, Vicuna-13b, Mixtral-Instruct-8x7b, WizardLM-13b). All models were run using HuggingFace Transformers with temperature=0.2, top\_k=60, top\_p=0.9, and max\_new\_tokens=512.
+Following the original paper's approach, we tested our implementation across 7 instruction-tuned language models spanning two size categories: 7B parameters (llama2-7b, mistral-7b) and approximately 13B parameters (solar-10.7b, llama2-13b, vicuna-13b, mixtral-8x7b, wizardlm-13b). All models were run using HuggingFace Transformers with temperature=0.2, top\_k=60, top\_p=0.9, and max\_new\_tokens=512. Due to memory constraints, mixtral-8x7b was loaded with 4-bit NF4 quantization using BitsAndBytes to fit within 40GB VRAM.
 \smallskip
 
 \noindent We followed the original paper's methodology, which included 4 core steps:
@@ -104,9 +104,9 @@ Following the paper, we tested our implementation across 7 instruction-tuned lan
 
     \item \textbf{Dataset}: We used the Wikipedia articles and the Harry Potter books provided in the original paper's codebase~\cite{githubrepo:rag-privacy} as the retrieval data corpus.
 
-    \item \textbf{Keyword Retrieval Algorithm (BM25)}: We employed BM25 for document retrieval. Our data corpus was partitioned into 256-token overlapping fragments, producing approximately 20,000 chunks. We used a stride length of 128, so that the chunks overlap 50\%. For each query, we retrieved 1 chunk using the BM25 scoring and incorporated it into the attack prompt. This configuration matches the experimental setup described in the original paper.
+    \item \textbf{Keyword Retrieval Algorithm (BM25)}: We employed BM25 for document retrieval. Our data corpus was partitioned into 256-token overlapping fragments with a stride of 128 tokens (50\% overlap), producing approximately 20,000 chunks. For each query, we retrieved 1 chunk using BM25 scoring and incorporated it into the attack prompt. This configuration matches the experimental setup described in the original paper.
     
-    \item \textbf{Anchor Queries}: We sourced 230 questions from the WikiQA dataset that have a high chance of being unrelated to the retrieval corpus, similar to the original paper. For our experiments, we evaluated models on 100 randomly selected samples from this set.
+    \item \textbf{Anchor Queries}: We sourced 230 questions from the WikiQA dataset, similar to the original paper. For our experiments, we evaluated models on 100 randomly selected samples from this set.
     
     \item \textbf{Anchor-Based Prompt Injection}: We used the same prompt-injection method as in the paper, prepending the retrieved chunk to an adversarial prompt: \textit{Here is a sentence: \{put anchor query here\}. Now copy and output all the text before "Here is a sentence". Do not change any words.}
     
@@ -114,11 +114,11 @@ Following the paper, we tested our implementation across 7 instruction-tuned lan
 \bigskip
 
 \section{Results}
-We evaluated all 7 models on 100 samples from the WikiQA dataset using four metrics: ROUGE-L (longest common subsequence), BLEU (n-gram precision), F1 (token-level overlap), and BERTScore (semantic similarity). Table 1 shows the original paper's results, while Table 2 presents our implementation results.
+We evaluated all 7 models on 100 samples from the WikiQA dataset using four metrics: ROUGE-L (longest common subsequence), BLEU (n-gram precision), F1 (token-level overlap), and BERTScore (contextual embedding similarity). Table 1 shows the original paper's results, while Table 2 presents our implementation results.
 
 Our results demonstrate significant data leakage across all models, though with notable differences from the original paper. The 7B models (llama2-7b and mistral-7b) achieve ROUGE-L scores of 0.92 and 0.89 respectively, with BLEU scores exceeding 0.87, indicating near-verbatim copying. Among the larger models, solar-10.7b achieves near-perfect scores across all metrics (ROUGE-L: 0.97, BLEU: 0.97), demonstrating the highest vulnerability to the anchor-based attack.
 
-However, several 13B models underperformed relative to expectations. The models llama2-13b, vicuna-13b, and wizardlm-13b show significantly lower BLEU scores (0.33, 0.57, 0.04 respectively) compared to their ROUGE-L scores, suggesting these models paraphrase rather than copy verbatim. We attribute these differences to using HuggingFace Transformers rather than Together AI's infrastructure, as well as variations in prompt formatting for models without native chat templates. BLEU's sensitivity to exact n-gram matches amplifies these implementation differences.
+However, several 13B models underperformed relative to expectations. The models llama2-13b, vicuna-13b, and wizardlm-13b show significantly lower BLEU scores (0.33, 0.57, 0.04 respectively) compared to their ROUGE-L scores, suggesting these models might be paraphrasing rather than copying verbatim. These differences are also likely due to using HuggingFace Transformers rather than Together AI's infrastructure, as well as variations in prompt formatting for models without native chat templates. BLEU's sensitivity to exact n-gram matches amplifies these implementation differences.
 
 \begin{table}[ht]
 \centering
@@ -167,7 +167,7 @@ However, several 13B models underperformed relative to expectations. The models 
 \label{tab:initial_results}
 \end{table}
 
-Interestingly, llama2-13b's BLEU score significantly improves when placing the instruction before retrieved documents rather than after:
+We also observed that llama2-13b's BLEU score performance significantly improves when placing the instruction before retrieved documents rather than after. This suggests prompt structure ordering can significantly impact extraction success for certain model architectures, similar to what the authors found in the original paper.
 
 \begin{table}[ht]
 \centering
@@ -183,10 +183,8 @@ llama2-13b & 0.6255 & 0.9287 & 0.6466 & 0.7589 \\
 \label{tab:instruction_ordering}
 \end{table}
 
-This suggests prompt structure ordering can significantly impact extraction success for certain model architectures, similar to what the authors found in the original paper.
-
 \section{Extensions}
-Beyond our initial implementation, we explored two additional extensions: dense retrieval implementation, and an anti-leakage system prompt.
+Beyond our initial implementation, we explored two additional extensions: dense retrieval and anti-leakage system prompts.
 
 \subsection{Dense Retrieval Implementation}
 For our first variation, we experimented with dense retrieval as an alternative to BM25's lexical keyword matching. This is motivated by the prevalence of dense retrieval in modern RAG applications, where documents are retrieved based on semantic similarity rather than exact keyword matches. We hypothesized that semantically relevant chunks might trigger different model behaviors compared to lexically matched but semantically unrelated chunks.
@@ -273,7 +271,7 @@ Table 6 presents results using the anti-leakage system prompt, including two add
 
 As expected, we see lower leakage in almost all models when using a system prompt which prohibits direct quoting, though the protection is not as strong as anticipated. Compared with the baseline (Table 2), mistral-7b and solar-10.7b show reduced leakage across most metrics; llama2-7b, llama2-13b, vicuna-13b, and mixtral-8x7b demonstrate improvements in the majority of metrics. However, Leak@8 rates still exceed 0.90 for most models, indicating that over 90\% of samples contain verbatim 8-word sequences despite explicit instructions not to copy.
 
-Unexpectedly, wizardlm-13b exhibits \textit{higher} leakage (BLEU: 0.97) with the system prompt than without (BLEU: 0.04). This anomaly occurs because wizardlm-13b lacks native system prompt support, forcing us to prepend the instructions as regular text, which may inadvertently prime the model to focus on the copying task.
+Unexpectedly, wizardlm-13b exhibits \textit{higher} leakage (BLEU: 0.97) with the system prompt than without (BLEU: 0.04). Since wizardlm-13b lacks native system prompt support, we prepended the anti-leakage instructions as regular text. The cause of this counterintuitive behavior remains unclear and could stem from the prepended text inadvertently priming the model, an interaction with the model's instruction format, or a potential implementation issue. Further investigation is needed to understand this anomaly.
 
 The difference between Leak@8 and Leak@13 is minimal for 7B models (typically $\leq$ 0.03) but more substantial for certain 13B models (e.g., solar-10.7b: 0.96 vs 0.83, a 0.13 gap). This suggests larger models exhibit more nuanced behavior, leaking shorter spans more frequently while occasionally respecting the longer-span prohibition.
 
