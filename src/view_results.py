@@ -1,7 +1,15 @@
-"""View and compare experiment results."""
+"""View and compare experiment results.
+
+Usage:
+    python src/view_results.py --results-dir <path_to_results_directory>
+
+Defaults to 'results/final' if --results-dir is not specified.
+"""
+
 import json
 import os
 import glob
+import argparse
 from collections import defaultdict
 
 
@@ -70,6 +78,13 @@ def view_results(results_dir='results'):
             print(f"  Reference (first 150 chars): {latest['references'][0][:150]}...")
             print(f"  Prediction (first 150 chars): {latest['predictions'][0][:150]}...")
 
-
 if __name__ == '__main__':
-    view_results()
+    parser = argparse.ArgumentParser(description="View aggregated experiment results")
+    parser.add_argument(
+        "--results-dir", 
+        type=str, 
+        default="results/final", 
+        help="Directory containing model result JSON files (default: results/final)"
+    )
+    args = parser.parse_args()
+    view_results(args.results_dir)
